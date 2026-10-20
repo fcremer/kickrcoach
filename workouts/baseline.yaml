@@ -1,0 +1,25 @@
+version: 1
+name: M2 low-power ERG example
+notes: Software exercise only; not an FTP test or individual training prescription.
+blocks:
+  - name: Easy start
+    duration_sec: 60
+    mode: erg
+    target:
+      watts: 40
+    cadence:
+      minimum_rpm: 70
+      maximum_rpm: 95
+  - name: Steady
+    duration_sec: 120
+    mode: erg
+    target:
+      watts: 70
+    cadence:
+      minimum_rpm: 70
+      maximum_rpm: 95
+  - name: Easy finish
+    duration_sec: 60
+    mode: erg
+    target:
+      watts: 40

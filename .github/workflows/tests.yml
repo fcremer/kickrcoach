@@ -1,4 +1,4 @@
-name: Protocol and adapter tests (no Bluetooth hardware)
+name: Protocol, adapter and workout tests (no Bluetooth hardware)
 on: [push, pull_request]
 permissions:
   contents: read
@@ -18,3 +18,5 @@ jobs:
         run: kickrcoach probe --duration-sec 2
       - name: M1 deterministic adapter smoke test
         run: kickrcoach-adapters --steps 20
+      - name: M2 deterministic workout smoke test
+        run: kickrcoach-workout workouts/baseline.yaml
