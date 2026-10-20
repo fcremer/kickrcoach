@@ -113,3 +113,24 @@ assertions; it does not require downloaded schemas or Strava credentials.
 Dashboard tests cover summary values, missing values, recording warnings and
 TCX availability. Native visual review was unavailable because computer-use
 permissions were pending; no visual or real-hardware acceptance is claimed.
+
+## STOP result and TCX pause correction
+
+Workout events now carry the trainer connection/control state and the actual
+FTMS stop-confirmation flag at event time. A separate event after the stop
+procedure captures its result. If the collector already persisted local ABORTED
+while awaiting the indication, the recorder appends the subsequent final event
+and snapshot instead of silently dropping them. Snapshot confirmation refers
+to the current BLE connection; the immutable event preserves proof before a
+shutdown disconnect clears that connection. An unused trainer is distinguished
+from a missing stop confirmation. Neither file-write success nor lack of an
+error is treated as proof of physical stop.
+
+The summary exposes `trainer_stop_result` only where that evidence exists.
+Older sessions are not retroactively labelled confirmed and are not modified.
+TCX track splitting uses real pause state transitions and collection gaps,
+rather than small wall/workout-clock differences due to FTMS indication delay.
+The corrected exporter also works with existing samples/events and does not
+require rewriting historical measurements. Tests reproduce a delayed Stop
+while the collector records ABORTED, rejection/timeout, and the extra end-track
+regression with nonzero protocol delay.

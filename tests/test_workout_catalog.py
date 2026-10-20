@@ -21,6 +21,9 @@ blocks:
     duration_sec: 3
     target:
       watts: {steady}
+    cadence:
+      minimum_rpm: 80
+      maximum_rpm: 90
     notes: Observe effort.
 ''')
 
@@ -58,6 +61,8 @@ def test_loaded_workout_preview_execution_and_snapshot_preserve_definition(tmp_p
             before=trainer.transport.writes.copy()
             snapshot=session.snapshot()
             assert snapshot['duration_sec']==5
+            assert snapshot['cadence_target'] is None
+            assert snapshot['preview'][1]['cadence']=={'minimum_rpm':80,'maximum_rpm':90}
             assert [block['target_w'] for block in snapshot['preview']]==[50,130]
             assert snapshot['workout_notes'].startswith('Text only')
             assert trainer.transport.writes==before
@@ -67,6 +72,7 @@ def test_loaded_workout_preview_execution_and_snapshot_preserve_definition(tmp_p
                 await session.step()
             assert session.snapshot()['target_w']==130
             assert session.snapshot()['block_notes']=='Observe effort.'
+            assert session.snapshot()['cadence_target']=={'minimum_rpm':80,'maximum_rpm':90}
             for _ in range(3):
                 clock.advance(1)
                 await session.step()

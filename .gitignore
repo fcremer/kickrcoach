@@ -231,3 +231,6 @@ config.toml
 *.sqlite3
 *.sqlite3-*
 *.tcx
+
+# Personal history, athlete profiles and planning conversations
+/training_context/

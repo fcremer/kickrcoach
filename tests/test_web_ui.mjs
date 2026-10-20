@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {validBoundaries,zoneFor,zoneRange} from '../src/kickrcoach/static/zones.mjs';
+import {goalFeedback} from '../src/kickrcoach/static/guidance.mjs';
 
 const boundaries=[100,120,140,160];
 test('zones have inclusive starts and no gaps at boundaries',()=>{
@@ -40,11 +41,11 @@ function dashboard() {
   const elements=new Map();
   const get=id=>{if(!elements.has(id)) elements.set(id,new Element());return elements.get(id);};
   get('zone-strip').children=Array.from({length:5},(_,i)=>{const item=new Element();item.dataset.zone=String(i+1);return item;});
-  const context=vm.createContext({validBoundaries,zoneFor,zoneRange,
+  const context=vm.createContext({validBoundaries,zoneFor,zoneRange,goalFeedback,
     document:{getElementById:get,createElement:()=>new Element(),querySelector:()=>get('readonly'),querySelectorAll:()=>[]},
     location:{protocol:'http:',host:'localhost:8000'},performance:{now:()=>100},
     WebSocket:class {},setInterval:()=>{},setTimeout:()=>{},console,fetch:async()=>{throw new Error('Failed to fetch');}});
-  const source=readFileSync(new URL('../src/kickrcoach/static/app.js',import.meta.url),'utf8').replace(/^import[^\n]+\n/,'');
+  const source=readFileSync(new URL('../src/kickrcoach/static/app.js',import.meta.url),'utf8').replace(/^import[^\n]+\n/gm,'');
   vm.runInContext(source+'\nglobalThis.testing={render,clearReadings,command,renderReview};',context);
   return {get,...context.testing};
 }
@@ -212,4 +213,50 @@ test('disconnected KICKR permits selection and preview but never start',()=>{
   assert.equal(ui.get('workout-select').disabled,true);
   ui.clearReadings('Server nicht erreichbar');
   assert.equal(ui.get('workout-select').disabled,true);
+});
+
+test('goal boundaries are inclusive and stale or missing data never score as within target',()=>{
+  for(const [value,status] of [[79,'below'],[80,'within'],[85,'within'],[90,'within'],[91,'above']])
+    assert.equal(goalFeedback(value,80,90,true,true),status);
+  for(const value of [null,undefined,NaN]) assert.equal(goalFeedback(value,80,90,true,true),'unavailable');
+  assert.equal(goalFeedback(85,80,90,true,false),'unavailable');
+  assert.equal(goalFeedback(85,80,90,false,true),'inactive');
+  assert.equal(goalFeedback(85,undefined,undefined,true,true),'unconfigured');
+});
+
+test('cadence coaching uses the current block while power deviations leave ERG in charge',()=>{
+  const ui=dashboard(),data=payload();
+  data.workout.state='RUNNING';data.workout.target_w=70;data.workout.power_tolerance_w=5;
+  data.workout.cadence_target={minimum_rpm:80,maximum_rpm:90};
+  data.trainer.power_w=69;data.trainer.cadence_rpm=85;
+  ui.render(data);
+  assert.equal(ui.get('power-card').dataset.feedback,'within');
+  assert.equal(ui.get('cadence-status').textContent,'✓ Im Ziel');
+  assert.equal(ui.get('cadence-goal').textContent,'Ziel 80–90 rpm');
+  data.trainer.cadence_rpm=91;data.trainer.power_w=80;ui.render(data);
+  assert.equal(ui.get('cadence-hint').textContent,'Langsamer treten');
+  assert.equal(ui.get('power-card').dataset.feedback,'above');
+  assert.match(ui.get('power-hint').textContent,/ERG regelt/);
+  data.trainer.cadence_rpm=79;data.trainer.power_w=60;ui.render(data);
+  assert.equal(ui.get('cadence-hint').textContent,'Schneller treten');
+  assert.equal(ui.get('power-card').dataset.feedback,'below');
+  // A subsequent intentional lower-cadence block is classified by its own range.
+  data.workout.cadence_target={minimum_rpm:60,maximum_rpm:70};data.trainer.cadence_rpm=65;ui.render(data);
+  assert.equal(ui.get('cadence-card').dataset.feedback,'within');
+  data.workout.override_w=5;data.workout.target_w=75;data.trainer.power_w=75;ui.render(data);
+  assert.match(ui.get('power-goal').textContent,/75 W/);
+  assert.equal(ui.get('power-card').dataset.feedback,'within');
+  data.trainer.freshness='STALE';ui.render(data);
+  assert.equal(ui.get('cadence-card').dataset.feedback,'unavailable');
+  assert.equal(ui.get('power-card').dataset.feedback,'unavailable');
+  assert.equal(ui.get('cadence-hint').textContent,'');
+  data.trainer.freshness='LIVE';
+  ui.clearReadings('Serverdaten fehlen');
+  assert.equal(ui.get('cadence-card').dataset.feedback,'unavailable');
+  assert.equal(ui.get('cadence-hint').textContent,'');
+  data.workout.cadence_target=null;ui.render(data);
+  assert.equal(ui.get('cadence-status').textContent,'Keine Vorgabe');
+  data.workout.state='PAUSED';data.workout.cadence_target={minimum_rpm:80,maximum_rpm:90};ui.render(data);
+  assert.equal(ui.get('cadence-status').textContent,'Pausiert');
+  assert.equal(ui.get('cadence-hint').textContent,'');
 });

@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from datetime import datetime, timedelta, timezone
 import json
 import fcntl
-from bisect import bisect_right
+from bisect import bisect_left, bisect_right
 from pathlib import Path
 import sqlite3
 from typing import Any
@@ -172,6 +172,13 @@ def summarize(samples: list[dict], events: list[dict]) -> dict:
         result[f'max_{field}'] = max(values) if values else None
         result[f'coverage_{field}_sec'] = round(weight, 2)
     result['running_sample_count'] = len(active)
+    final = next((event for event in reversed(events)
+                  if (event['reason'] in ('stop_procedure_finished','completed') or event['reason'].startswith('stop_unconfirmed'))
+                  and 'stop_confirmed' in event), None)
+    if final is None:
+        final = next((event for event in reversed(events) if event['reason'] == 'stop_not_required'),None)
+    result['trainer_stop_result'] = ({key:final.get(key) for key in
+        ('timestamp','reason','trainer_connection','trainer_control','stop_confirmed')} if final else None)
     return result
 
 
@@ -195,7 +202,17 @@ class SessionRecorder:
                 if self.session_id and events and state in ('COMPLETED','ABORTED'):
                     late = [{**event, 'offset_sec':max(0,event['monotonic']-self.origin_mono),
                              'timestamp':(self.origin_utc+timedelta(seconds=max(0,event['monotonic']-self.origin_mono))).isoformat()} for event in events]
-                    self.store.append(self.session_id, late, None, state)
+                    # A collector may have observed ABORTED while FTMS Stop was
+                    # still awaiting its indication. Preserve the final result,
+                    # including the authoritative control state captured by the
+                    # engine before any shutdown disconnect.
+                    final = next((event for event in reversed(late)
+                                  if event['reason'] in ('stop_procedure_finished','stop_not_required') or
+                                  event['reason'].startswith('stop_unconfirmed')), None)
+                    point = ({**sample, 'offset_sec':max(0,now-self.origin_mono),
+                              'timestamp':(self.origin_utc+timedelta(seconds=max(0,now-self.origin_mono))).isoformat(),
+                              'state':state,'elapsed_sec':elapsed} if final else None)
+                    self.store.append(self.session_id, late, point, state)
                 return
             self.origin_mono = min(event['monotonic'] for event in events)
             self.origin_utc = utc - timedelta(seconds=now-self.origin_mono)
@@ -264,11 +281,23 @@ def export_tcx(session: dict) -> bytes:
     node(lap, 'Calories', 0)
     node(lap, 'Intensity', 'Active')
     node(lap, 'TriggerMethod', 'Manual')
+    # State transitions, not small wall/workout-clock differences, define
+    # pauses. FTMS indication latency must not create an artificial last track.
+    pause_offsets = []
+    for timeline in (session['events'], session['samples']):
+        previous_state = None
+        for item in timeline:
+            if item['state'] == 'PAUSED' and previous_state != 'PAUSED':
+                pause_offsets.append(item['offset_sec'])
+            previous_state = item['state']
+    pause_offsets.sort()
     track = None
     previous: dict | None = None
     for point in points:
-        split = (previous is None or point['offset_sec']-previous['offset_sec'] > 2.5 or
-                 point['offset_sec']-previous['offset_sec'] - (point['elapsed_sec']-previous['elapsed_sec']) > .01)
+        pause_index = bisect_left(pause_offsets, previous['offset_sec']) if previous else 0
+        paused_between = (previous is not None and pause_index < len(pause_offsets)
+                          and pause_offsets[pause_index] < point['offset_sec'])
+        split = previous is None or point['offset_sec']-previous['offset_sec'] > 2.5 or paused_between
         if split:
             track = node(lap, 'Track')
         assert track is not None

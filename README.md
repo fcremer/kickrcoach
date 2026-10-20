@@ -50,6 +50,18 @@ zusätzlich geprüft. Hinweise wie „bei RPE über 5 nicht steigern“ sind Tex
 Die Blöcke laufen automatisch. Bei Bedarf selbst reduzieren, pausieren oder
 stoppen. Der tatsächlich gefahrene Workout-Snapshot wird im Archiv gespeichert.
 
+## Kadenz und Zielanzeigen
+
+`cadence.minimum_rpm` / `cadence.maximum_rpm` definieren die Kadenz pro Block.
+Ohne diese Angaben gibt es keine Kadenzvorgabe. Die Kacheln zeigen während des
+Trainings **unter Ziel / im Ziel / über Ziel**, ergänzt um **schneller treten /
+Kadenz halten / langsamer treten** bei der Kadenz. Watt werden mit sichtbarer
+±5-W-Anzeigetoleranz bewertet; die Leistungsregelung bleibt beim KICKR.
+Veraltete/fehlende Daten erhalten keine Zielbewertung.
+
+Der [ChatGPT-Planungsworkflow](docs/TRAINING_PLANNER.md) beschreibt die Übergabe
+von historischem Kontext, YAML-Plänen und tatsächlichen JSON-Trainingsdaten.
+
 ## Trainings speichern und exportieren
 
 GUI-Trainings werden jetzt automatisch lokal aufgezeichnet. Unter

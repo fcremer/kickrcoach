@@ -1,4 +1,5 @@
 import {validBoundaries, zoneFor, zoneRange} from './zones.mjs';
+import {goalFeedback} from './guidance.mjs';
 const el = id => document.getElementById(id);
 const states = {CONNECTED:'Verbunden',CONNECTING:'Verbindet …',DISCONNECTED:'Getrennt',DEGRADED:'Gestört'};
 const freshness = {LIVE:'Live',STALE:'Veraltet',LOST:'Kein Signal'};
@@ -25,8 +26,29 @@ function renderZone(bpm, freshness, boundaries) {
     el('zone-ranges').append(item);
   }
 }
+function renderGuidance(trainer, workout, online=true) {
+  const active=workout?.state==='RUNNING';
+  const live=online&&trainer?.connection==='CONNECTED'&&trainer?.freshness==='LIVE';
+  const target=workout?.target_w??workout?.planned_target_w;
+  const tolerance=workout?.power_tolerance_w??5;
+  const cadence=workout?.cadence_target;
+  const labels={below:'↓ Unter Ziel',within:'✓ Im Ziel',above:'↑ Über Ziel',
+    unavailable:'— Keine aktuellen Daten',inactive:workout?.state==='PAUSED'?'Pausiert':'Training nicht aktiv',unconfigured:'Keine Vorgabe'};
+  for(const [metric,value,min,max] of [
+    ['power',trainer?.power_w,Number.isFinite(target)?target-tolerance:null,Number.isFinite(target)?target+tolerance:null],
+    ['cadence',trainer?.cadence_rpm,cadence?.minimum_rpm,cadence?.maximum_rpm]]) {
+    const status=workout?goalFeedback(value,min,max,active,live):'unconfigured';
+    el(`${metric}-card`).dataset.feedback=status;
+    el(`${metric}-status`).textContent=labels[status];
+    el(`${metric}-goal`).textContent=metric==='power'&&Number.isFinite(target)?`Ziel ${target} W · ±${tolerance} W`:
+      metric==='cadence'&&cadence?`Ziel ${cadence.minimum_rpm}–${cadence.maximum_rpm} rpm`:'';
+    el(`${metric}-hint`).textContent=metric==='cadence'?({below:'Schneller treten',above:'Langsamer treten',within:'Kadenz halten'}[status]||''):
+      ['below','above','within'].includes(status)?'ERG regelt · Kadenz gleichmäßig halten':'';
+  }
+}
 function renderWorkout(workout, online=true) {
   el('workout-panel').hidden=!workout;
+  renderGuidance(latest?.trainer,workout,online);
   if(!workout) return;
   const state=workout.state;
   el('catalog-errors').hidden=!workout.catalog_errors?.length;
@@ -42,7 +64,7 @@ function renderWorkout(workout, online=true) {
     el('workout-blocks').replaceChildren();
     for(const block of workout.preview||[]) {
       const row=document.createElement('tr');
-      for(const value of [block.name,time(block.duration_sec),`${block.target_w} W`]) {
+      for(const value of [block.name,time(block.duration_sec),`${block.target_w} W`,block.cadence?`${block.cadence.minimum_rpm}–${block.cadence.maximum_rpm} rpm`:'—']) {
         const cell=document.createElement('td');cell.textContent=value;row.append(cell);
       }
       el('workout-blocks').append(row);
@@ -170,6 +192,8 @@ function renderReview(session) {
   el('review-name').textContent=session.metadata.workout.name;
   el('review-status').textContent=`${session.metadata.simulated?'Simulation · ':''}${archiveStates[session.status]||session.status} · ${new Date(session.started_at).toLocaleString('de-DE')}`;
   el('review-duration').textContent=time(summary.active_duration_sec);
+  el('review-stop').textContent=summary.trainer_stop_result?
+    (summary.trainer_stop_result.reason==='stop_not_required'?'Kein Trainer-STOP erforderlich':summary.trainer_stop_result.stop_confirmed?'Trainer-STOP bestätigt':'Trainer-STOP nicht bestätigt'):'Trainer-STOP: kein bestätigter Abschluss dokumentiert';
   el('review-timing').textContent=`Pausen: ${time(summary.paused_duration_sec||0)} · Wartezeit vor dem Losfahren: ${time(summary.waiting_duration_sec||0)}`;
   el('review-power').textContent=`${value(summary.average_power_w,'W')} / ${value(summary.max_power_w,'W')}`;
   el('review-hr').textContent=`${value(summary.average_bpm,'bpm')} / ${value(summary.max_bpm,'bpm')}`;

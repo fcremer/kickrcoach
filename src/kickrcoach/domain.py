@@ -115,6 +115,7 @@ class TrainerAdapter(Protocol):
     control_state: ControlState
     events: asyncio.Queue[AdapterEvent]
     target_power_w: int | None
+    stop_confirmed: bool
 
     async def connect(self) -> None: ...
     async def disconnect(self) -> None: ...

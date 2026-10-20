@@ -247,7 +247,8 @@ def test_collector_gaps_are_not_interpolated_and_wall_clock_jumps_do_not_change_
             actual = datetime.fromisoformat(point['timestamp'])-datetime.fromisoformat(data['started_at'])
             assert actual.total_seconds() == point['offset_sec']
         assert 'trainer_received_at' in points[-1]
-        assert data['events'][-1]['reason'] == 'manual_stop:commands_invalidated'
+        assert data['events'][-1]['reason'] == 'stop_procedure_finished'
+        assert data['events'][-1]['stop_confirmed'] is True
         await session.close()
     asyncio.run(run())
 
@@ -379,5 +380,96 @@ def test_live_zero_is_a_measurement_not_a_missing_value(tmp_path):
         assert data['summary']['average_power_w']==0
         assert data['summary']['coverage_power_w_sec']==1
         assert b'<ae:Watts>0</ae:Watts>' in export_tcx(data)
+        await session.close()
+    asyncio.run(run())
+
+
+def test_stop_indication_after_collector_abort_persists_authoritative_final_state(tmp_path,monkeypatch):
+    async def run():
+        clock,session,store=await owner(tmp_path)
+        await pedaling(session,clock)
+        await session.command('start')
+        await pedaling(session,clock,1)
+        entered,release=asyncio.Event(),asyncio.Event()
+        original=session.trainer.transport.write_gatt_char
+        async def delayed(characteristic,data,response=True):
+            if data==b'\x08\x01':
+                entered.set()
+                await release.wait()
+            await original(characteristic,data,response)
+        monkeypatch.setattr(session.trainer.transport,'write_gatt_char',delayed)
+        stop=asyncio.create_task(session.command('stop'))
+        await entered.wait()
+        # Lifelong collector can observe local ABORTED before FTMS indication.
+        await session.step()
+        identifier=session.recorder.session_id
+        initial=store.detail(identifier)
+        assert initial['samples'][-1]['trainer_control']=='UNCERTAIN'
+        assert initial['summary']['trainer_stop_result'] is None
+        clock.advance(.06)
+        release.set()
+        await stop
+        final=store.detail(identifier)
+        assert final['samples'][-1]['trainer_control']=='READONLY'
+        assert final['samples'][-1]['stop_confirmed'] is True
+        assert final['summary']['trainer_stop_result']['stop_confirmed'] is True
+        assert final['summary']['trainer_stop_result']['trainer_control']=='READONLY'
+        assert final['summary']['active_duration_sec']==initial['summary']['active_duration_sec']
+        await session.close()
+    asyncio.run(run())
+
+
+def test_unconfirmed_stop_is_not_recorded_as_confirmation(tmp_path,monkeypatch):
+    async def run():
+        clock,session,store=await owner(tmp_path)
+        await pedaling(session,clock)
+        await session.command('start')
+        async def failed_stop():
+            raise TimeoutError('no indication')
+        monkeypatch.setattr(session.trainer,'stop',failed_stop)
+        await session.command('stop')
+        result=store.detail(session.recorder.session_id)['summary']['trainer_stop_result']
+        assert result['stop_confirmed'] is False
+        assert 'nicht bestätigt' in session.notice
+        await session.close()
+    asyncio.run(run())
+
+
+def test_tcx_protocol_latency_does_not_create_last_single_point_track(tmp_path,monkeypatch):
+    async def run():
+        clock,session,store=await owner(tmp_path)
+        await pedaling(session,clock)
+        await session.command('start')
+        await pedaling(session,clock,1)
+        clock.advance(.25)
+        original=session.trainer.stop
+        async def delayed():
+            clock.advance(.06)
+            await original()
+        monkeypatch.setattr(session.trainer,'stop',delayed)
+        await session.command('stop')
+        data=store.detail(session.recorder.session_id)
+        root=ET.fromstring(export_tcx(data))
+        assert len(root.findall('.//{*}Track'))==1
+        assert len(root.findall('.//{*}Trackpoint'))==3
+        # Also applies to existing archives without new result fields.
+        for event in data['events']:
+            event.pop('stop_confirmed',None)
+        assert len(ET.fromstring(export_tcx(data)).findall('.//{*}Track'))==1
+        await session.close()
+    asyncio.run(run())
+
+
+def test_cancelled_waiting_start_records_no_stop_needed(tmp_path):
+    async def run():
+        clock,session,store=await owner(tmp_path)
+        await session.command('start')
+        assert session.engine.state=='WAITING'
+        await session.command('stop')
+        data=store.detail(session.recorder.session_id)
+        assert data['summary']['trainer_stop_result']['reason']=='stop_not_required'
+        assert data['summary']['trainer_stop_result']['stop_confirmed'] is False
+        assert session.notice is None
+        assert session.trainer.transport.writes==[]
         await session.close()
     asyncio.run(run())

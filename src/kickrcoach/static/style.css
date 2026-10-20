@@ -152,3 +152,15 @@ svg path {fill: none; stroke: var(--lime); stroke-width: 2; vector-effect: non-s
 #block-notes {border-left:2px solid var(--lime);padding-left:12px}
 .workout-select {flex-wrap:wrap}
 .workout-select select {min-width:160px}
+.target-feedback {display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);min-height:84px}
+.target-feedback > span,.target-feedback small {font-size:12px;line-height:1.4;color:var(--muted)}
+.target-feedback strong {font-size:20px;font-weight:650;color:var(--muted)}
+.metric[data-feedback="within"] .target-feedback strong {color:var(--lime)}
+.metric[data-feedback="below"] .target-feedback strong,.metric[data-feedback="above"] .target-feedback strong {color:#f6b974}
+.metric[data-feedback="below"],.metric[data-feedback="above"] {box-shadow:inset 0 -3px #f6b974}
+.power .target-feedback {border-color:#66833f}
+.power .target-feedback > span,.power .target-feedback small {color:#465b30}
+.power .target-feedback strong {color:#465b30}
+.power[data-feedback="within"] .target-feedback strong {color:#214b18}
+.power[data-feedback="below"] .target-feedback strong,.power[data-feedback="above"] .target-feedback strong {color:#663a00}
+.power[data-feedback="below"],.power[data-feedback="above"] {box-shadow:inset 0 -3px #9b600e}
