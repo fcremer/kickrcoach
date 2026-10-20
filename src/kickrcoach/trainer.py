@@ -45,6 +45,11 @@ class FtmsTrainer(EventSource):
         self._target_confirmed = False
         self._expected_status: tuple[int, int] | None = None
 
+    @property
+    def stop_confirmed(self) -> bool:
+        """True only after a successful FTMS stop result in this connection."""
+        return self._control is not None and self._control.stop_confirmed
+
     def _state(self, connection: CS, control: TS, reason: str) -> None:
         self.connection, self.control_state = connection, control
         self.publish(StateEvent(ReceivedAt.now(self.clock), connection, control, reason))

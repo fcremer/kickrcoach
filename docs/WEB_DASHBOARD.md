@@ -351,3 +351,28 @@ Tests exercise selection before either device connects, HR-first arrival,
 selection retention and change during an idle reconnect, zero FTMS writes,
 capability rejection on later connection, an offline HTTP selection with no
 ride creation, and UI gating. All hardware interactions use memory transports.
+
+## Block cadence and target feedback
+
+The cadence tile shows the selected block's explicit YAML `cadence` range.
+There is no inferred or universal default. The range appears before Start and
+in the block preview, but coaching is only active during RUNNING with live
+trainer data and a current server connection. Below range: “Schneller treten”;
+inside the inclusive range: “Kadenz halten”; above: “Langsamer treten”.
+Pause/end/missing or stale data never receive a green target classification.
+Text and arrows accompany color. No cadence target means “Keine Vorgabe”.
+
+Power feedback compares measured power to the confirmed target (including
+manual override), with a visible +/-5 W display tolerance. Planned targets are
+shown before activation. This is descriptive UI feedback, not another control
+loop: the KICKR still regulates ERG, and the power tile asks for steady cadence
+rather than telling the rider to chase watts by changing cadence. HR continues
+to show the user's current zone; no HR target or HR-chasing logic is invented.
+The block cadence target is retained in samples and the existing workout
+snapshot for later review. Cadence guidance already supported by the workout
+schema remains the source for the engine's established safety policy.
+
+Regression coverage checks inclusive boundaries, absent/stale values, server
+loss, inactive states, block range changes, manual watt overrides and the two
+independent power/cadence messages. The user's local workout was updated only
+with their explicitly chosen cadence range; it remains outside public commits.

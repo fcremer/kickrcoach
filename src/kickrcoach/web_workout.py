@@ -152,8 +152,11 @@ class WebWorkout:
                 'selected':self.selected, 'catalog_errors':self.catalog_errors,
                 'duration_sec':engine.workout.duration_sec, 'workout_notes':engine.workout.notes,
                 'block_notes':current.notes,
+                'cadence_target':current.cadence.model_dump() if current.cadence else None,
+                'power_tolerance_w':5,
                 'preview':[{'name':block.name, 'duration_sec':block.duration_sec,
-                            'target_w':block.target.resolve(engine.baseline_w)} for block in engine.workout.blocks],
+                            'target_w':block.target.resolve(engine.baseline_w),
+                            'cadence':block.cadence.model_dump() if block.cadence else None} for block in engine.workout.blocks],
                 'choices':[{'id':key,'name':value.name} for key,value in self.workouts.items()]}
 
     async def command(self, action: str, selected: str | None = None) -> None:
@@ -244,6 +247,9 @@ class WebWorkout:
             hr = self.hr.latest
             point = {
                 'dropped_engine_events':engine.dropped_events,
+                'stop_confirmed':self.trainer.stop_confirmed,
+                'cadence_target':engine.workout.blocks[engine.block_index].cadence.model_dump()
+                                 if engine.workout.blocks[engine.block_index].cadence else None,
                 'block_index':engine.block_index, 'block':engine.workout.blocks[engine.block_index].name,
                 'planned_target_w':engine.planned_target_w, 'commanded_target_w':self.trainer.target_power_w,
                 'override_w':engine.override_w,

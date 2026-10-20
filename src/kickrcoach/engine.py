@@ -38,6 +38,9 @@ class WorkoutEvent:
     elapsed_sec: float
     block_index: int
     target_w: int | None
+    trainer_connection: CS
+    trainer_control: TS
+    stop_confirmed: bool
 
 
 class WorkoutEngine:
@@ -92,7 +95,8 @@ class WorkoutEngine:
 
     def _event(self, reason: str) -> None:
         event = WorkoutEvent(self.clock.monotonic(), self.state, reason, self.elapsed_sec,
-                             self.block_index, self.trainer.target_power_w)
+                             self.block_index, self.trainer.target_power_w, self.trainer.connection,
+                             self.trainer.control_state, self.trainer.stop_confirmed)
         if self.events.full():
             self.events.get_nowait()
             self.events.task_done()
@@ -382,6 +386,8 @@ class WorkoutEngine:
     async def stop(self) -> None:
         """Local abort is immediate, even if FTMS Stop fails or a target is pending."""
         async with self._stop_lock:
+            stop_required = (self.state in (WorkoutState.RUNNING, WorkoutState.PAUSED) or
+                             self.trainer.control_state not in (TS.READONLY, TS.UNAVAILABLE))
             self._generation += 1
             self._freeze()
             if self.state == WorkoutState.COMPLETED:
@@ -399,6 +405,10 @@ class WorkoutEngine:
                 await self.trainer.stop()
             except Exception:
                 self._event("stop_unconfirmed:physical_stop_may_be_required")
+            else:
+                self._event("stop_procedure_finished" if self.trainer.stop_confirmed else
+                            "stop_unconfirmed:physical_stop_may_be_required" if stop_required else
+                            "stop_not_required")
             if active and active is not asyncio.current_task() and done:
                 # Await the operation, not its caller's entire task: that caller
                 # may run close() in finally, which needs this same stop lock.
