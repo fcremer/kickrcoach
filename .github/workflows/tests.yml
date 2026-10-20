@@ -20,3 +20,8 @@ jobs:
         run: kickrcoach-adapters --steps 20
       - name: M2 deterministic workout smoke test
         run: kickrcoach-workout workouts/baseline.yaml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Dashboard zone and state tests
+        run: node --test tests/test_web_ui.mjs

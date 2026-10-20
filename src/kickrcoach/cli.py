@@ -21,6 +21,7 @@ class Config:
     test_sec: float = 10
     target_w: int = 50
     maximum_w: int = 100
+    hr_zone_boundaries: tuple[int, ...] | list[int] = ()
     trainer_id: str = ""
     hr_id: str = ""
     hardware: bool = False
@@ -28,6 +29,10 @@ class Config:
     scenario: str = "normal"
 
     def validate(self) -> None:
+        from .zones import HeartRateZones
+        if not isinstance(self.hr_zone_boundaries, (list, tuple)):
+            raise ValueError("hr_zone_boundaries must be a list of BPM boundaries")
+        HeartRateZones(tuple(self.hr_zone_boundaries))
         for name in ("duration_sec", "scan_sec", "stale_sec", "lost_sec",
                      "command_timeout_sec", "test_sec"):
             value = getattr(self, name)

@@ -11,7 +11,7 @@ Die validierte YAML-Datei läuft mit virtueller Zeit durch alle ERG-Blöcke.
 Die Engine unterstützt Pause/Fortsetzen, -5/+5 W pro aktuellem Block, STOP,
 Kadenz-/Telemetrie-Schutz und sichere Wiederverbindung. Der neue Startbefehl
 ist ausschließlich simuliert; reale Workout-Steuerung bleibt bis zur Hardware-Abnahme
-gesperrt. Die Webansicht bleibt vorerst eine Live-Anzeige.
+gesperrt. Die Webansicht bietet im Simulator Workout-Bedienelemente; mit echten Geräten bleibt sie eine Live-Anzeige.
 
 Fehlerfälle lassen sich mit `--scenario cadence-collapse`, `disconnect`,
 `stale-hr`, `timeout` oder `rejected-control` auslösen. Statisches Training läuft
@@ -22,7 +22,7 @@ fortgesetzt. Details, API, Sicherheitsgrenzen und Abnahme:
 ## Webansicht starten
 
 Die erste Webversion zeigt Leistung, Trittfrequenz, Puls, Messwertalter,
-Geräteverbindungen und einen flüchtigen 3-Minuten-Verlauf. Sie ist ausschließlich
+Geräteverbindungen und einen flüchtigen 3-Minuten-Verlauf. Mit echten Geräten ist sie ausschließlich
 lesend und sendet auch beim Beenden keine Trainer-Steuerbefehle.
 
 ```sh
@@ -37,16 +37,27 @@ Die Bluetooth-Berechtigung gilt weiterhin für das ausführende Terminal.
 Mit **Ctrl+C im Terminal** werden beide Geräte getrennt und der Server beendet.
 Bei belegtem Port z. B. `--port 8001` ergänzen.
 
-Ohne Hardware-Flag startet eine deutlich markierte Simulation:
+Ohne Hardware-Flag startet eine deutlich markierte Simulation mit Workout-Auswahl,
+Start, Pause, Fortsetzen, ±5 W und STOP:
 
 ```sh
-uv run --locked kickrcoach-web
+uv run --locked kickrcoach-web --config config.toml
 ```
 
+Die Pulszone ist die Hauptanzeige; die BPM-Zahl steht kleiner darunter. Deine
+vier Übergangsgrenzen stehen als `hr_zone_boundaries` in der lokalen TOML-Datei:
+die ersten BPM-Werte von Z2, Z3, Z4 und Z5, strikt aufsteigend. Z1 umfasst alle
+Werte darunter. Bei Änderungen die App neu starten. Ohne Grenzen wird keine Zone
+geschätzt; bei veraltetem/fehlendem Puls wird auch die aktuelle Zone ausgeblendet.
+`config.example.toml` enthält bewusst keine persönlichen Zonengrenzen.
+
 Ein Serverprozess besitzt die Geräteverbindungen; mehrere Browser oder ein
-Neuladen der Seite teilen sich dieselbe Erfassung. Bei Sensorverlust gibt es
-keinen automatischen BLE-Reconnect: Geräte/Broadcast prüfen, Server mit Ctrl+C
-beenden und neu starten. Der Browser verbindet seinen Datenstrom automatisch neu.
+Neuladen der Seite teilen sich dieselbe Erfassung. Trainer und Pulssensor werden unabhängig gesucht und verbunden. Sie dürfen erst
+nach dem App-Start eingeschaltet werden. Fehlt ein Gerät oder bricht seine
+Verbindung ab, versucht die App es automatisch erneut; die andere Verbindung
+bleibt bestehen. Ein ausgebliebener Puls wird als veraltet/fehlend markiert und
+die HR-Verbindung bei längerem Ausfall separat neu aufgebaut. Der Browser
+verbindet seinen Datenstrom ebenfalls automatisch neu.
 Alte Messwerte werden ausgeblendet; 0 W bzw. 0 rpm bleiben gültige Messwerte.
 
 Der Server bindet ausschließlich an `127.0.0.1`, nicht ans LAN. Keine externen
