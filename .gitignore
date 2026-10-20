@@ -218,3 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local hardware evidence may include identifiers and physiological data.
+config.local.toml
+*.jsonl
+*.local.log
