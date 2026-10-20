@@ -42,9 +42,10 @@ class SessionFeedback(BaseModel):
 
 
 def create_app(config: Config | None = None, telemetry: Telemetry | None = None, *, enable_control: bool = False,
-               data_dir: Path | None = None) -> FastAPI:
+               data_dir: Path | None = None, workouts_dir: Path | None = None) -> FastAPI:
     config = config or Config()
     config.validate()
+    workout_directory = workouts_dir if workouts_dir is not None else Path.cwd() / 'workouts'
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -61,13 +62,15 @@ def create_app(config: Config | None = None, telemetry: Telemetry | None = None,
                     app.state.telemetry = None
                 else:
                     session = WebWorkout(maximum_w=config.training_maximum_w,
-                                         stale_sec=config.stale_sec,lost_sec=config.lost_sec)
+                                         stale_sec=config.stale_sec,lost_sec=config.lost_sec,
+                                         workouts_dir=workout_directory)
                     app.state.telemetry = Telemetry(session.trainer, session.hr, simulated=True, workout=session)
 
                 async def run() -> None:
                     try:
                         if config.hardware and telemetry is None:
-                            app.state.telemetry = HardwareTelemetry(config,control_enabled=enable_control)
+                            app.state.telemetry = HardwareTelemetry(
+                                config,control_enabled=enable_control,workouts_dir=workout_directory)
                         owner = app.state.telemetry.workout
                         if owner is not None:
                             owner.recorder = SessionRecorder(app.state.store,
@@ -191,6 +194,7 @@ def main() -> None:
     parser.add_argument("--hardware", action="store_true", help="Connect to configured BLE devices (read-only unless --enable-control)")
     parser.add_argument("--enable-control", action="store_true", help="Enable hardware GUI workout commands without an interactive prompt")
     parser.add_argument("--config", type=Path)
+    parser.add_argument("--workouts-dir", type=Path, help="Local YAML workout directory (default: ./workouts)")
     parser.add_argument("--data-dir", type=Path, help="Local session archive directory")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
@@ -217,7 +221,8 @@ def main() -> None:
     from uvicorn.config import LOGGING_CONFIG
     log_config = deepcopy(LOGGING_CONFIG)
     log_config['loggers']['kickrcoach'] = {'handlers':['default'], 'level':'INFO', 'propagate':False}
-    uvicorn.run(create_app(config,enable_control=args.enable_control, **({"data_dir":args.data_dir} if args.data_dir else {})), host="127.0.0.1", port=args.port,
+    uvicorn.run(create_app(config,enable_control=args.enable_control, **({"data_dir":args.data_dir} if args.data_dir else {}),
+                           **({"workouts_dir":args.workouts_dir} if args.workouts_dir else {})), host="127.0.0.1", port=args.port,
                 access_log=False, log_config=log_config)
 
 

@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import math
+from pathlib import Path
 from . import ble
 from .cli import Config
 from .domain import ConnectionState as CS, Freshness
@@ -18,7 +19,8 @@ log = logging.getLogger(__name__)
 
 
 class HardwareTelemetry(Telemetry):
-    def __init__(self, config: Config, *, retry_sec: float = 3, control_enabled: bool = False):
+    def __init__(self, config: Config, *, retry_sec: float = 3, control_enabled: bool = False,
+                 workouts_dir: Path | None = None):
         if not math.isfinite(retry_sec) or retry_sec <= 0:
             raise ValueError("retry interval must be finite and positive")
         self.config = config
@@ -38,7 +40,8 @@ class HardwareTelemetry(Telemetry):
                               safety=SafetyController(config.training_maximum_w))
         hr = BleHeartRateSource(hr_factory, stale_sec=config.stale_sec, lost_sec=config.lost_sec)
         session = WebWorkout(trainer=trainer,hr=hr,hardware=True,maximum_w=config.training_maximum_w,
-                             stale_sec=config.stale_sec,lost_sec=config.lost_sec) if control_enabled else None
+                             stale_sec=config.stale_sec,lost_sec=config.lost_sec,
+                             workouts_dir=workouts_dir) if control_enabled else None
         super().__init__(trainer, hr, simulated=False, stale_sec=config.stale_sec, lost_sec=config.lost_sec,workout=session)
 
     def snapshot(self) -> dict:

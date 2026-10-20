@@ -297,3 +297,33 @@ changing network binding or trainer control. Existing dashboard tests plus
 independent device-state/server-loss assertions pass. Physical iPad/Safari
 visual acceptance remains unverified; computer-use permissions were unavailable
 in this session. No rendering measurements on the real device are claimed.
+
+
+## Local YAML workout catalog
+
+The web app loads additional `.yaml`/`.yml` definitions from `./workouts` at
+server startup, configurable with `--workouts-dir`. Built-in workouts remain
+available and local file IDs use the `file:<filename>` namespace. Invalid or
+out-of-policy files are skipped with a visible per-file error; a bad file does
+not prevent other workouts from loading. GUI file targets must be absolute
+watts, begin at <=50 W and fit the configured training ceiling. Preparation
+still validates every target against discovered trainer capabilities. Loading
+files never opens a device or starts a workout.
+
+The selected workout exposes duration, block/target preview, workout notes and
+current block notes. Notes are guidance only: RPE conditions are not executable
+branches. The user retains pause/stop/target controls; no physiological fitness
+assessment or automatic RPE-based modification is introduced. Definitions are
+immutable for a session and the archive retains the executed snapshot.
+
+Adding/editing files requires a server restart. The existing “Neu laden” button
+re-prepares the selected definition, not the on-disk file. The chosen default
+remains the short baseline; importing never auto-selects or auto-starts a ride.
+Personal workout files are kept local and are not included in the feature PR.
+
+Validation: catalog rejection tests cover malformed YAML, percentage targets
+without a baseline, excessive start power and the training ceiling. Simulator
+and API tests cover selection, previews/notes and actual block transitions.
+The user's local workout was separately run to completion with a fake clock
+and simulated adapters; no real trainer commands or physiological acceptance
+are claimed.

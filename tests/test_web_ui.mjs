@@ -177,3 +177,22 @@ test('compact device status distinguishes independent connections and unknown se
     assert.equal(ui.get(`${role}-state`).dataset.live,'false');
   }
 });
+
+test('local workout preview and current instructions are visible without changing control state',()=>{
+  const ui=dashboard(),data=payload();
+  data.workout.duration_sec=2700;
+  data.workout.workout_notes='Observe effort; no automatic RPE decisions.';
+  data.workout.block_notes='Keep steady.';
+  data.workout.preview=[{name:'Start',duration_sec:60,target_w:50},{name:'Main',duration_sec:300,target_w:130}];
+  data.workout.catalog_errors=['invalid.yaml: nicht geladen'];
+  ui.render(data);
+  assert.equal(ui.get('workout-duration').textContent,'45 min');
+  assert.equal(ui.get('workout-blocks').children.length,2);
+  assert.equal(ui.get('workout-blocks').children[1].children[2].textContent,'130 W');
+  assert.equal(ui.get('block-notes').textContent,'Keep steady.');
+  assert.equal(ui.get('catalog-errors').hidden,false);
+  assert.equal(ui.get('start').disabled,false);
+  data.workout.block_notes=null;data.workout.catalog_errors=[];ui.render(data);
+  assert.equal(ui.get('block-notes').hidden,true);
+  assert.equal(ui.get('catalog-errors').hidden,true);
+});
