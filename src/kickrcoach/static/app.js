@@ -29,6 +29,25 @@ function renderWorkout(workout, online=true) {
   el('workout-panel').hidden=!workout;
   if(!workout) return;
   const state=workout.state;
+  el('catalog-errors').hidden=!workout.catalog_errors?.length;
+  el('catalog-errors').textContent=(workout.catalog_errors||[]).join(' ');
+  el('workout-duration').textContent=Number.isFinite(workout.duration_sec)?`${Math.round(workout.duration_sec/60)} min`:'';
+  el('workout-notes').hidden=!workout.workout_notes;
+  el('workout-notes').textContent=workout.workout_notes||'';
+  el('block-notes').hidden=!workout.block_notes;
+  el('block-notes').textContent=workout.block_notes||'';
+  const previewKey=JSON.stringify([workout.selected,workout.preview]);
+  if(el('workout-preview').dataset.key!==previewKey) {
+    el('workout-preview').dataset.key=previewKey;
+    el('workout-blocks').replaceChildren();
+    for(const block of workout.preview||[]) {
+      const row=document.createElement('tr');
+      for(const value of [block.name,time(block.duration_sec),`${block.target_w} W`]) {
+        const cell=document.createElement('td');cell.textContent=value;row.append(cell);
+      }
+      el('workout-blocks').append(row);
+    }
+  }
   const hardware=workout.mode==='hardware';
   el('workout-panel').setAttribute('aria-label',hardware?'Training am KICKR':'Simuliertes Workout');
   el('workout-mode').textContent=hardware?'WORKOUT · KICKR':'WORKOUT · SIMULATOR';

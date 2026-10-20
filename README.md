@@ -33,6 +33,22 @@ sichtbar gemeldet und im Terminal protokolliert. Neuladen des Browsers setzt
 weder Workout noch Freigabe zurück. Ctrl+C versucht Stop und trennt beide Geräte.
 Ohne `--enable-control` bleibt der Hardware-Modus ausschließlich lesend.
 
+## Eigene YAML-Workouts
+
+Beim Serverstart werden zusätzlich alle `.yaml`/`.yml`-Dateien aus `./workouts`
+geladen. In der GUI auswählen; **Trainingsablauf** zeigt Blöcke, Dauer und
+Wattvorgaben. Workout- und aktuelle Blockhinweise erscheinen ebenfalls.
+Neue/geänderte Dateien benötigen einen Serverneustart. **Neu laden** setzt nur
+die aktuell ausgewählte Einheit zurück; eine laufende Einheit wird nie durch
+Dateiänderungen verändert. Ein anderer Ordner ist mit `--workouts-dir` wählbar.
+
+Die GUI akzeptiert hier absolute Wattvorgaben, den ersten Block bis 50 W und
+spätere Ziele bis `training_maximum_w`. Ungültige Dateien werden mit einem
+sichtbaren Hinweis übersprungen; Trainerfähigkeiten werden bei der Vorbereitung
+zusätzlich geprüft. Hinweise wie „bei RPE über 5 nicht steigern“ sind Text:
+Die Blöcke laufen automatisch. Bei Bedarf selbst reduzieren, pausieren oder
+stoppen. Der tatsächlich gefahrene Workout-Snapshot wird im Archiv gespeichert.
+
 ## Trainings speichern und exportieren
 
 GUI-Trainings werden jetzt automatisch lokal aufgezeichnet. Unter

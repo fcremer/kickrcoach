@@ -3,12 +3,14 @@ import asyncio
 import logging
 from dataclasses import asdict
 import sqlite3
+from pathlib import Path
 from collections.abc import Coroutine
 
 from .domain import SystemClock, TrainerSample, TrainerAdapter, HeartRateSource, ConnectionState as CS, ControlState as TS, StateEvent
 from .engine import WorkoutEngine, WorkoutState, WorkoutStateError
 from .simulation import SimulatedTrainer, SimulatedHeartRateSource
 from .workout import Workout
+from .workout_catalog import local_workouts
 from .recording import SessionRecorder
 from .safety import SafetyController
 
@@ -30,7 +32,8 @@ class WebWorkout:
     """Owns both event queues. Telemetry broadcast reads this owner's snapshot."""
     def __init__(self, *, trainer: TrainerAdapter | None = None, hr: HeartRateSource | None = None,
                  hardware: bool = False, maximum_w: int = 300,
-                 stale_sec: float = 5, lost_sec: float = 15) -> None:
+                 stale_sec: float = 5, lost_sec: float = 15,
+                 workouts_dir: Path | None = None) -> None:
         self.clock = SystemClock()
         if hardware and (trainer is None or hr is None):
             raise ValueError("hardware sessions require real adapter instances")
@@ -43,6 +46,10 @@ class WebWorkout:
         if hardware:
             self.workouts = {key: value.model_copy(update={'name':value.name.replace('Demo · ', '')})
                              for key,value in self.workouts.items()}
+        self.catalog_errors: list[str] = []
+        if workouts_dir is not None:
+            loaded, self.catalog_errors = local_workouts(workouts_dir, maximum_w)
+            self.workouts.update(loaded)
         self.notice: str | None = None
         self.selected = 'baseline'
         self.engine = self._engine()
@@ -137,7 +144,11 @@ class WebWorkout:
                 'remaining_sec':engine.remaining_sec, 'block':current.name, 'next_block':next_block,
                 'planned_target_w':engine.planned_target_w, 'target_w':self.trainer.target_power_w,
                 'override_w':engine.override_w, 'recovery_armed':engine.recovery_armed,
-                'selected':self.selected,
+                'selected':self.selected, 'catalog_errors':self.catalog_errors,
+                'duration_sec':engine.workout.duration_sec, 'workout_notes':engine.workout.notes,
+                'block_notes':current.notes,
+                'preview':[{'name':block.name, 'duration_sec':block.duration_sec,
+                            'target_w':block.target.resolve(engine.baseline_w)} for block in engine.workout.blocks],
                 'choices':[{'id':key,'name':value.name} for key,value in self.workouts.items()]}
 
     async def command(self, action: str, selected: str | None = None) -> None:
