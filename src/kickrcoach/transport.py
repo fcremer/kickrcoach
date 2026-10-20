@@ -1,0 +1,23 @@
+"""Small injectable GATT boundary; no third-party Bluetooth types escape it."""
+from collections.abc import Callable
+from typing import Protocol
+from .domain import GattCharacteristic
+
+Notify = Callable[[bytes], None]
+Lost = Callable[[], None]
+
+
+class GattTransport(Protocol):
+    @property
+    def is_connected(self) -> bool: ...
+    @property
+    def characteristics(self) -> tuple[GattCharacteristic, ...]: ...
+    async def connect(self) -> None: ...
+    async def disconnect(self) -> None: ...
+    async def read_gatt_char(self, characteristic: str) -> bytes: ...
+    async def subscribe(self, characteristic: str, callback: Notify) -> None: ...
+    async def write_gatt_char(self, characteristic: str, data: bytes,
+                              response: bool = True) -> None: ...
+
+
+TransportFactory = Callable[[Lost], GattTransport]

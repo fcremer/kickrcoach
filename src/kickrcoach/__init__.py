@@ -1,1 +1,1 @@
-"""KICKR Coach M0: no workout engine until hardware acceptance passes."""
+"""KICKR Coach: diagnostic M0 probe and M1 protocol/domain foundation."""

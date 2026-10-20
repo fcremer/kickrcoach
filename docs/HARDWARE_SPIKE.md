@@ -101,3 +101,9 @@ These results are software evidence only, not real-hardware acceptance.
   https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/HRS_v1.0/out/en/index-en.html
 - Bleak CoreBluetooth/macOS behavior and permissions:
   https://bleak.readthedocs.io/en/latest/backends/macos.html
+
+## Subsequent software work
+
+On 2026-10-20 the user explicitly requested M1 despite this pending hardware gate.
+M1 software work is documented separately in `M1_FOUNDATION.md`. The M0 results
+above remain unchanged: no real-hardware acceptance was performed or inferred.

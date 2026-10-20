@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kickrcoach"
-version = "0.1.0"
-description = "M0 local BLE/FTMS hardware feasibility probe"
+version = "0.2.0"
+description = "Local FTMS/HRS adapters, diagnostic probe and deterministic simulators"
 requires-python = ">=3.12"
 dependencies = ["bleak==3.0.2"]
 
@@ -14,6 +14,7 @@ dev = ["pytest==8.4.2"]
 
 [project.scripts]
 kickrcoach = "kickrcoach.cli:main"
+kickrcoach-adapters = "kickrcoach.demo:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

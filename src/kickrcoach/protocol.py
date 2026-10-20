@@ -1,6 +1,7 @@
 """Pure Bluetooth SIG FTMS / Heart Rate Measurement decoders."""
 from dataclasses import dataclass
 import struct
+from typing import TypedDict
 
 
 def uuid(short: str) -> str:
@@ -62,7 +63,13 @@ def indoor_bike(data: bytes) -> dict[str, float | int]:
     return result
 
 
-def heart_rate(data: bytes) -> dict[str, object]:
+class HeartMeasurement(TypedDict):
+    bpm: int
+    contact: bool | None
+    rr_sec: list[float]
+
+
+def heart_rate(data: bytes) -> HeartMeasurement:
     r = Reader(data)
     flags = r.number(1)
     if flags & 0xE0:
@@ -98,7 +105,15 @@ class PowerRange:
         return cls(low, high, step)
 
 
-def features(data: bytes) -> dict[str, object]:
+class FeatureFlags(TypedDict):
+    machine_bits: int
+    target_bits: int
+    cadence_supported: bool
+    power_supported: bool
+    power_target_supported: bool
+
+
+def features(data: bytes) -> FeatureFlags:
     if len(data) != 8:
         raise PacketError("Fitness Machine Feature must contain 8 bytes")
     machine, target = struct.unpack("<II", data)
