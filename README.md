@@ -6,10 +6,10 @@
 uv run --locked kickrcoach-web --hardware --enable-control --config config.toml
 ```
 
-Im Terminal einmal pro Serverstart die angezeigte Freigabe exakt eingeben
-(bei Standardkonfiguration **CONTROL 50 W**). Das erfüllt die explizite
-CLI-Bestätigung aus AGENTS.md. Bis zum Klick auf **Training am KICKR starten**
-bleiben Verbindung und Workout-Vorbereitung lesend.
+Der Server startet direkt, ohne Texteingabe oder TTY-Anforderung.
+`--enable-control` gibt die GUI-Steuerung ausdrücklich frei. Bis zum Klick auf
+**Training am KICKR starten** bleiben Verbindung und Workout-Vorbereitung lesend.
+Der separate M0-Diagnosetest behält seine interaktive Bestätigung.
 
 Unter **http://127.0.0.1:8000** ein Workout auswählen und **Training starten**
 drücken. Du kannst danach aufsteigen und losfahren. Ohne frische Pedaldaten zeigt
