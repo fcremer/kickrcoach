@@ -68,3 +68,4 @@ def test_exact_confirmation_enables_control_only_for_this_server(monkeypatch,tmp
     web.main()
     assert calls==[{'enable_control':True}]
     assert 'CONTROL 50 W' in prompts[0]
+    assert 'Trainingsgrenze 300 W' in sys.stdout.getvalue()

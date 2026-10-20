@@ -273,12 +273,16 @@ def test_hardware_gui_api_uses_real_adapter_path_only_when_explicitly_enabled(mo
             # Deliver a fixed BLE packet, not fake simulator telemetry from the web owner.
             async def notify():
                 transports[-1].notify(BIKE,struct.pack('<HHHh',0x44,2000,160,42))
-            client.portal.call(notify)
             def command(action):
                 response=client.post('/api/workout',headers=headers,json={'action':action})
                 assert response.status_code==200,response.text
                 return response.json()
-            assert command('start')['target_w']==40
+            waiting=command('start')
+            assert waiting['state']=='WAITING' and waiting['elapsed_sec']==0
+            assert transports[-1].writes==[]
+            client.portal.call(notify)
+            running=ws.receive_json()
+            assert running['workout']['state']=='RUNNING' and running['workout']['target_w']==40
             assert command('increase')['target_w']==45
             assert command('pause')['state']=='PAUSED'
             assert command('resume')['state']=='RUNNING'

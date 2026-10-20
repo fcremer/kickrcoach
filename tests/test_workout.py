@@ -509,8 +509,85 @@ def test_late_tick_skips_expired_blocks_without_replaying_commands():
     asyncio.run(run())
 
 
-@pytest.mark.parametrize('maximum', [True, 0, 101, 50.5])
+@pytest.mark.parametrize('maximum', [True, 0, 32768, 50.5])
 def test_final_safety_configuration_rejects_invalid_bounds(maximum):
     from kickrcoach.safety import SafetyController
     with pytest.raises(ValueError):
         SafetyController(maximum)
+
+
+def test_requested_start_waits_without_writes_or_elapsed_time_until_pedaling():
+    async def run():
+        async with session(start=False) as (engine,trainer,hr,clock):
+            trainer.emit_sample(cadence_rpm=0)
+            await engine.start(wait_for_pedaling=True)
+            assert engine.state==WS.WAITING and trainer.transport.writes==[]
+            for _ in range(3):
+                await advance(engine,trainer,hr,clock,30,cadence=0)
+                assert engine.state==WS.WAITING and engine.elapsed_sec==0
+                assert engine.remaining_sec==30 and trainer.transport.writes==[]
+            # A missing or stale sample cannot start resistance either.
+            clock.advance(15)
+            await engine.tick()
+            assert engine.state==WS.WAITING and trainer.transport.writes==[]
+            await advance(engine,trainer,hr,clock,1,cadence=80)
+            assert engine.state==WS.RUNNING and engine.elapsed_sec==0
+            assert trainer.transport.writes[:3]==[b'\x00',b'\x05\x28\x00',b'\x07']
+            await advance(engine,trainer,hr,clock,10)
+            assert engine.block_index==1 and engine.elapsed_sec==10
+    asyncio.run(run())
+
+
+def test_stop_while_waiting_prevents_later_pedaling_from_starting():
+    async def run():
+        async with session(start=False) as (engine,trainer,hr,clock):
+            trainer.emit_sample(cadence_rpm=0)
+            await engine.start(wait_for_pedaling=True)
+            await engine.stop()
+            trainer.emit_sample(cadence_rpm=80)
+            with pytest.raises(WorkoutStateError):
+                await engine.tick()
+            assert engine.state==WS.ABORTED and engine.elapsed_sec==0
+            assert trainer.transport.writes==[]
+    asyncio.run(run())
+
+
+def test_waiting_start_survives_a_pre_start_connection_loss_without_restoring_control():
+    async def run():
+        async with session(start=False) as (engine,trainer,hr,clock):
+            trainer.emit_sample(cadence_rpm=0)
+            await engine.start(wait_for_pedaling=True)
+            trainer.lose_connection()
+            await engine.tick()
+            assert engine.state==WS.WAITING and engine.elapsed_sec==0
+            await trainer.disconnect()
+            await trainer.connect()
+            await engine.tick()
+            assert trainer.transport.writes==[]
+            trainer.emit_sample(cadence_rpm=80)
+            await engine.tick()
+            assert engine.state==WS.RUNNING and engine.elapsed_sec==0
+    asyncio.run(run())
+
+
+def test_training_safety_accepts_over_100_but_respects_config_and_device_range():
+    from kickrcoach.safety import SafetyController
+    from kickrcoach.protocol import PowerRange
+    safety=SafetyController(300)
+    assert safety.validate(250,PowerRange(0,1000,5))==250
+    for watts,limits in [(305,PowerRange(0,1000,5)),(250,PowerRange(0,200,5)),
+                         (251,PowerRange(0,1000,5)),(True,PowerRange(0,1000,1))]:
+        with pytest.raises(ValueError):
+            safety.validate(watts,limits)
+    # M0 diagnostics still refuse a configured limit above 100 W.
+    from kickrcoach.cli import Config
+    with pytest.raises(ValueError,match='M0'):
+        Config(maximum_w=101).validate()
+    Config(training_maximum_w=300).validate()
+
+
+@pytest.mark.parametrize('limit',[True,0,2001,300.5])
+def test_training_limit_validation(limit):
+    from kickrcoach.cli import Config
+    with pytest.raises(ValueError,match='training_maximum_w'):
+        Config(training_maximum_w=limit).validate()

@@ -221,9 +221,10 @@ def test_hardware_start_requires_live_cadence_and_low_initial_target(monkeypatch
     async def run():
         async with environment(monkeypatch,{'trainer'},control_enabled=True) as (service,transports,scans):
             await until(lambda:service.workout.ready.is_set())
-            with pytest.raises(RuntimeError):
-                await service.workout.command('start')
+            await service.workout.command('start')
+            assert service.workout.snapshot()['state']=='WAITING'
             assert transports['trainer'][-1].writes==[]
+            await service.workout.command('stop')
             service.workout.workouts['too-high']=Workout.model_validate({'name':'refused','blocks':[
                 {'name':'too high','duration_sec':30,'target':{'watts':60}}]})
             await service.workout.command('select',selected='too-high')
@@ -328,4 +329,32 @@ def test_terminal_workout_drops_cached_telemetry_on_new_trainer_session(monkeypa
             await service.workout.step()
             assert service.workout.sample is None
             assert service.workout.snapshot()['state']=='ABORTED'
+    asyncio.run(run())
+
+
+def test_gui_start_before_mounting_waits_then_begins_and_accepts_targets_over_100(monkeypatch):
+    async def run():
+        async with environment(monkeypatch,{'trainer'},control_enabled=True,
+                               config_kwargs={'training_maximum_w':250}) as (service,transports,scans):
+            await until(lambda:service.workout.ready.is_set())
+            transport=transports['trainer'][-1]
+            await service.workout.command('start')
+            assert service.workout.snapshot()['state']=='WAITING'
+            assert service.workout.snapshot()['elapsed_sec']==0 and transport.writes==[]
+            transport.notify(BIKE,struct.pack('<HHHh',0x44,2000,0,0))
+            await service.workout.step()
+            assert service.workout.snapshot()['state']=='WAITING' and transport.writes==[]
+            # Measured power is not a target request and is not capped at the target limit.
+            transport.notify(BIKE,struct.pack('<HHHh',0x44,2000,160,600))
+            await service.workout.step()
+            assert service.workout.snapshot()['state']=='RUNNING'
+            assert service.workout.sample.power_w==600
+            for _ in range(42):  # 40 -> 250 W in manual five-watt steps.
+                await service.workout.command('increase')
+            assert service.trainer.target_power_w==250
+            assert service.workout.snapshot()['maximum_w']==250
+            with pytest.raises(RuntimeError,match='250 W'):
+                await service.workout.command('increase')
+            assert service.workout.engine.state=='RUNNING' and service.trainer.target_power_w==250
+            await service.workout.command('stop')
     asyncio.run(run())

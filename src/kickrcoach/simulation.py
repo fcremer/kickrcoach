@@ -10,6 +10,7 @@ from .domain import Clock, GattCharacteristic
 from .heart_rate import BleHeartRateSource
 from .protocol import BIKE, CONTROL, FEATURE, FTMS, HEART, HRS, POWER_RANGE, STATUS
 from .trainer import FtmsTrainer
+from .safety import SafetyController
 from .transport import Lost, Notify
 
 
@@ -121,7 +122,8 @@ class MemoryTransport:
 
 class SimulatedTrainer(FtmsTrainer):
     def __init__(self, *, clock: Clock | None = None, faults: Faults | None = None,
-                 command_timeout_sec: float = 5, event_capacity: int = 256) -> None:
+                 command_timeout_sec: float = 5, event_capacity: int = 256,
+                 safety: SafetyController | None = None) -> None:
         self.faults = faults or Faults()
         self.transport: MemoryTransport | None = None
 
@@ -129,7 +131,7 @@ class SimulatedTrainer(FtmsTrainer):
             self.transport = MemoryTransport("trainer", on_disconnect, self.faults)
             return self.transport
 
-        super().__init__(factory, clock=clock, command_timeout_sec=command_timeout_sec,
+        super().__init__(factory, clock=clock, safety=safety, command_timeout_sec=command_timeout_sec,
                          event_capacity=event_capacity)
 
     def emit_sample(self, *, power_w: int | None = None, cadence_rpm: float = 80) -> None:

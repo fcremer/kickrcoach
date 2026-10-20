@@ -45,7 +45,7 @@ def create_app(config: Config | None = None, telemetry: Telemetry | None = None,
                 # Server remains available while macOS scans/connects.
                 app.state.telemetry = None
             else:
-                session = WebWorkout()
+                session = WebWorkout(maximum_w=config.training_maximum_w)
                 app.state.telemetry = Telemetry(session.trainer, session.hr, simulated=True, workout=session)
 
             async def run() -> None:
@@ -134,8 +134,8 @@ def main() -> None:
             parser.error("--enable-control requires --hardware")
         if not sys.stdin.isatty() or not sys.stdout.isatty():
             parser.error("Hardware-Steuerung benötigt eine interaktive CLI-Bestätigung.")
-        phrase = f"CONTROL {min(50,config.maximum_w)} W"
-        print(f"GUI-Steuerung am echten Trainer: Starts bis {min(50,config.maximum_w)} W, Grenze {config.maximum_w} W. "
+        phrase = f"CONTROL {min(50,config.training_maximum_w)} W"
+        print(f"GUI-Steuerung am echten Trainer: Starts bis {min(50,config.training_maximum_w)} W, Trainingsgrenze {config.training_maximum_w} W. "
               "Discovery bleibt lesend; erst Workout starten sendet Steuerbefehle.")
         try:
             confirmed = input(f"Zur Freigabe exakt {phrase} eingeben: ").strip() == phrase

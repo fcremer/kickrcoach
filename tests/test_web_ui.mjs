@@ -111,3 +111,16 @@ test('undeliverable STOP gives explicit physical stop guidance',async()=>{
   assert.match(ui.get('workout-error').textContent,/STOP konnte nicht bestätigt werden/);
   assert.match(ui.get('workout-error').textContent,/Treten beenden/);
 });
+
+test('waiting for pedaling shows an armed start with only STOP available',()=>{
+  const ui=dashboard(),data=payload();data.workout.state='WAITING';data.workout.mode='hardware';
+  data.workout.maximum_w=300;ui.render(data);
+  assert.equal(ui.get('workout-state').textContent,'Warte aufs Losfahren');
+  assert.equal(ui.get('clock-label').textContent,'TRAININGSZEIT');
+  assert.equal(ui.get('elapsed').textContent,'00:00');
+  assert.equal(ui.get('start').disabled,true);
+  assert.equal(ui.get('stop').disabled,false);
+  assert.equal(ui.get('increase').disabled,true);
+  assert.equal(ui.get('pause').disabled,true);
+  assert.match(ui.get('planned').textContent,/Limit: 300 W/);
+});

@@ -104,3 +104,15 @@ class ProbeTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("stop_failed", out.getvalue())
         self.assertFalse(probe.hr_client.is_connected)
         self.assertFalse(probe.trainer.is_connected)
+
+
+def test_direct_m0_probe_never_inherits_the_higher_training_ceiling():
+    async def run():
+        probe=Probe(Config(maximum_w=300,target_w=150,training_maximum_w=300,
+                           duration_sec=.1,control_test=True))
+        with contextlib.redirect_stdout(io.StringIO()), pytest.raises(ValueError):
+            await probe.run()
+        assert probe.trainer.writes==[]
+        assert not probe.trainer.is_connected and not probe.hr_client.is_connected
+    import pytest
+    asyncio.run(run())

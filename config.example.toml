@@ -6,7 +6,10 @@ lost_sec = 15
 command_timeout_sec = 5
 test_sec = 10
 target_w = 50
+# M0 diagnostic control test only (<=100 W).
 maximum_w = 100
+# GUI workout ceiling, additionally limited by discovered trainer capabilities.
+training_maximum_w = 300
 # Use identifiers returned by `kickrcoach scan --hardware` on THIS Mac.
 trainer_id = ""
 hr_id = ""

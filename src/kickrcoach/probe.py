@@ -129,7 +129,7 @@ class Probe:
             self.hr.connected = True
             emit("connected", roles=["trainer", "hr"])
             supported, target_supported = await self.capabilities()
-            self.control = TrainerControl(self.trainer, SafetyController(self.config.maximum_w),
+            self.control = TrainerControl(self.trainer, SafetyController(min(self.config.maximum_w,100)),
                                           supported, self.config.command_timeout_sec)
             self.require_property(BIKE, "notify", True)
             await self.trainer.start_notify(BIKE, lambda _, data: self.receive("trainer", data))

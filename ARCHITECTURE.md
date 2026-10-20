@@ -104,7 +104,7 @@ Any state -> DEGRADED -> DISCONNECTED/READY
 Workout:
 
 ```text
-IDLE -> PREPARING -> READY -> RUNNING <-> PAUSED -> COMPLETED
+IDLE -> PREPARING -> READY -> WAITING -> RUNNING <-> PAUSED -> COMPLETED
                                   \-> ABORTED
 ```
 
@@ -145,3 +145,17 @@ V1 post-workout analytics:
 - RPE and completion
 
 Do not infer physiological thresholds from a single ride. Recommendations must state confidence/data sufficiency and require user confirmation before changing persistent training parameters.
+
+### AD-011 — Arm first start before pedaling; separate diagnostic/training limits
+
+The user needs Start → mount → ride. A first GUI start may therefore enter
+WAITING without any trainer-control writes or elapsed workout time. Fresh safe
+pedaling triggers that already-requested low-power start. STOP cancels WAITING.
+An immediate start remains possible when telemetry is already live. This is not
+a recovery shortcut: an interrupted running workout still requires explicit
+resume after low-target recovery.
+
+The GUI's training_maximum_w is independent of M0's maximum_w. Both still pass
+through SafetyController and discovered capabilities; measured power is not a
+target request. Raising an operational training ceiling does not infer FTP or
+change the M0 diagnostic ceiling. See docs/WEB_DASHBOARD.md for defaults and tests.
