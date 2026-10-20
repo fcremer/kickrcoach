@@ -167,10 +167,11 @@ At the user's request the GUI can now operate the real M2 trainer path. This is
 an explicit software integration, not a claim that an agent performed a physical
 load test or completed the remaining hardware acceptance record.
 
-The official CLI requires --hardware --enable-control and an interactive exact
-CONTROL <low bound> W confirmation before the web server/BLE startup. The default
-bound is 50 W (lowered by maximum_w). Config files cannot enable control and no
-unattended --yes exists. Without that flag, the previous read-only mode and its
+The official CLI requires --hardware --enable-control. At the user's explicit
+request the former CONTROL <low bound> W prompt/TTY requirement has been removed
+for the web app: the explicit flag authorizes GUI commands, and actual control
+still requires GUI Start and safe pedaling. Config files cannot enable control.
+The separate M0 diagnostic keeps its interactive confirmation. Without that flag, the previous read-only mode and its
 zero-write guarantees remain unchanged. HTTP commands still require same Origin,
 a strict action whitelist, an actual workout owner and server-side authorization;
 a client cannot enable control by modifying a payload or UI label.
@@ -205,8 +206,8 @@ Automated hardware-path tests use fixed fake advertisements and MemoryTransport,
 not physical devices. They verify no writes before Start, actual FTMS command
 order/acknowledgements, absent/late HR, start cadence and low-power requirements,
 manual/pause/resume/STOP through HTTP, shared browser state, exclusive reconnect,
-unconfirmed Stop display and active-session shutdown. CLI tests verify exact
-confirmation, refusal/cancellation/EOF/noninteractive paths before server startup.
+unconfirmed Stop display and active-session shutdown. CLI tests verify direct noninteractive startup without reading input, explicit
+flag handling and refusal of --enable-control without --hardware.
 The normal CI remains hardware-free. Real browser visual QA and physical load
 response remain unverified by this agent; the existing hardware record is not
 silently upgraded. Recording, SQLite and full M3 acceptance remain separate.
@@ -236,7 +237,7 @@ sets the GUI's SafetyController and the real or simulated adapter/controller
 policy consistently. There is no hardcoded 100 W restriction in the general
 validator: it enforces the chosen maximum plus discovered FTMS range/increment,
 within the protocol's signed 16-bit target representation. The GUI displays its
-configured training ceiling and CLI authorization prints it before confirmation.
+configured training ceiling and CLI startup prints it without requiring confirmation.
 Low initial targets (<=50 W) and low recovery targets remain unchanged. Measured
 power is observational and is never validated as if it were a requested target.
 
@@ -252,3 +253,12 @@ connection loss, HTTP Start before packets, hardware-path manual 250 W targets,
 configured/range/increment rejection, a 600 W measured packet independent of the
 target ceiling, and refusal of over-100 W targets in a directly constructed M0
 probe. These are hardware-free software checks; they are not physical load tests.
+
+## Direct web startup — user-requested override
+
+The user explicitly requested removal of the web server's CONTROL 50 W input.
+The GUI CLI now starts directly, including with noninteractive stdin/stdout.
+--enable-control remains required for real GUI commands; it does not start a
+workout or send a target. M0's distinct manual diagnostic confirmation remains
+unchanged. Tests verify no input() call in either control-enabled or read-only
+startup, correct server-side authorization and loopback binding.
