@@ -10,3 +10,6 @@ maximum_w = 100
 # Use identifiers returned by `kickrcoach scan --hardware` on THIS Mac.
 trainer_id = ""
 hr_id = ""
+
+# Inclusive first BPM of Z2, Z3, Z4, Z5; [] leaves zones unconfigured.
+hr_zone_boundaries = []

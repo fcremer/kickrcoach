@@ -1,105 +1,38 @@
-"""Local, read-only telemetry dashboard. No trainer-control endpoints."""
+"""Local telemetry dashboard; workout control is restricted to simulation."""
 import argparse
 import asyncio
-from collections import deque
 from contextlib import asynccontextmanager
 import logging
-import math
 from pathlib import Path
 import tomllib
-from typing import AsyncIterator
+from typing import AsyncIterator, Literal
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, ConfigDict
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import ble
+from .telemetry import Telemetry
+from .hardware_telemetry import HardwareTelemetry
 from .cli import Config
-from .domain import ConnectionState, HeartRateSource, SystemClock, TrainerAdapter, TrainerSample
-from .heart_rate import BleHeartRateSource
-from .protocol import FTMS, HRS
-from .simulation import SimulatedHeartRateSource, SimulatedTrainer
-from .trainer import FtmsTrainer
+from .web_workout import WebWorkout
 
 log = logging.getLogger(__name__)
 STATIC = Path(__file__).with_name("static")
 
 
-class Telemetry:
-    """One collector for all browsers; bounded ephemeral history, no recording."""
-    def __init__(self, trainer: TrainerAdapter, hr: HeartRateSource, *, simulated: bool,
-                 stale_sec: float = 5, lost_sec: float = 15, clock: SystemClock | None = None):
-        self.trainer, self.hr, self.simulated = trainer, hr, simulated
-        self.clock = clock or SystemClock()
-        self.stale_sec, self.lost_sec = stale_sec, lost_sec
-        self.started = self.clock.monotonic()
-        self.sample: TrainerSample | None = None
-        self.history: deque[dict] = deque(maxlen=180)
-        self.error: str | None = None
-        self.sequence = 0
 
-    def snapshot(self) -> dict:
-        now = self.clock.monotonic()
-        age = None if self.sample is None else max(0, now - self.sample.received.monotonic)
-        connected = self.trainer.connection == ConnectionState.CONNECTED
-        freshness = ("LOST" if not connected or age is None or age >= self.lost_sec else
-                     "STALE" if age >= self.stale_sec else "LIVE")
-        live = self.sample if freshness == "LIVE" else None
-        hr = self.hr.latest
-        return {"simulated": self.simulated, "sequence": self.sequence,
-                "elapsed_sec": max(0, now - self.started), "error": self.error,
-                "trainer": {"connection": self.trainer.connection, "freshness": freshness,
-                            "age_sec": age, "power_w": live.power_w if live else None,
-                            "cadence_rpm": live.cadence_rpm if live else None},
-                "hr": {"connection": self.hr.connection, "freshness": hr.freshness,
-                       "bpm": hr.bpm,
-                       "age_sec": max(0, now - hr.received.monotonic) if hr.received else None}}
-
-    async def collect(self) -> None:
-        # Dedicated consumers prevent competing browser clients from stealing events.
-        async def consume(source: TrainerAdapter | HeartRateSource) -> None:
-            while True:
-                event = await source.events.get()
-                if isinstance(event, TrainerSample):
-                    self.sample = event
-                source.events.task_done()
-
-        consumers = [asyncio.create_task(consume(source)) for source in (self.trainer, self.hr)]
-        try:
-            results = await asyncio.gather(self.trainer.connect(), self.hr.connect(),
-                                           return_exceptions=True)
-            if any(isinstance(result, BaseException) for result in results):
-                self.error = "Geräteverbindung fehlgeschlagen. Bluetooth, Broadcast und Geräteauswahl prüfen; App neu starten."
-                log.error("Telemetry device setup failed (details omitted to protect device identifiers)")
-            step = 0
-            while True:
-                if self.simulated:
-                    assert isinstance(self.trainer, SimulatedTrainer)
-                    assert isinstance(self.hr, SimulatedHeartRateSource)
-                    self.trainer.emit_sample(power_w=round(125 + 18 * math.sin(step / 9)),
-                                             cadence_rpm=82 + 4 * math.sin(step / 7))
-                    self.hr.emit_sample(round(118 + 6 * math.sin(step / 15)))
-                await asyncio.sleep(1)
-                self.sequence += 1
-                point = self.snapshot()
-                self.history.append({"t": point["elapsed_sec"],
-                                     "power": point["trainer"]["power_w"],
-                                     "cadence": point["trainer"]["cadence_rpm"],
-                                     "hr": point["hr"]["bpm"]})
-                step += 1
-        finally:
-            for task in consumers:
-                task.cancel()
-            await asyncio.gather(*consumers, return_exceptions=True)
-            results = await asyncio.gather(self.trainer.disconnect(), self.hr.disconnect(),
-                                           return_exceptions=True)
-            if any(isinstance(result, BaseException) for result in results):
-                log.error("Device cleanup unconfirmed; check Bluetooth connections")
+class WorkoutCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    action: Literal["select", "start", "pause", "resume", "increase", "decrease", "stop"]
+    selected: str | None = None
 
 
 def create_app(config: Config | None = None, telemetry: Telemetry | None = None) -> FastAPI:
     config = config or Config()
+    config.validate()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -111,17 +44,13 @@ def create_app(config: Config | None = None, telemetry: Telemetry | None = None)
                 # Server remains available while macOS scans/connects.
                 app.state.telemetry = None
             else:
-                app.state.telemetry = Telemetry(SimulatedTrainer(), SimulatedHeartRateSource(), simulated=True)
+                session = WebWorkout()
+                app.state.telemetry = Telemetry(session.trainer, session.hr, simulated=True, workout=session)
 
             async def run() -> None:
                 try:
                     if config.hardware and telemetry is None:
-                        found = await ble.discover(config.scan_sec)
-                        trainer = FtmsTrainer(ble.transport_factory(ble.select(found, config.trainer_id, FTMS)))
-                        hr = BleHeartRateSource(ble.transport_factory(ble.select(found, config.hr_id, HRS)),
-                                               stale_sec=config.stale_sec, lost_sec=config.lost_sec)
-                        app.state.telemetry = Telemetry(trainer, hr, simulated=False,
-                                                        stale_sec=config.stale_sec, lost_sec=config.lost_sec)
+                        app.state.telemetry = HardwareTelemetry(config)
                     await app.state.telemetry.collect()
                 except Exception:
                     app.state.failure = "Bluetooth-Verbindung fehlgeschlagen. Geräte einschalten, IDs und Berechtigung prüfen; App neu starten."
@@ -143,6 +72,19 @@ def create_app(config: Config | None = None, telemetry: Telemetry | None = None)
     async def index() -> FileResponse:
         return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-store"})
 
+    @app.post("/api/workout")
+    async def command(body: WorkoutCommand, request: Request) -> dict:
+        if request.headers.get("origin") != str(request.base_url).rstrip("/"):
+            raise HTTPException(403, "Zugriff nur aus der lokalen Webansicht.")
+        source = app.state.telemetry
+        if config.hardware or source is None or source.workout is None or not source.simulated:
+            raise HTTPException(403, "Workout-Steuerung ist ausschließlich im Simulator verfügbar.")
+        try:
+            await source.workout.command(body.action, body.selected)
+        except (ValueError, RuntimeError) as exc:
+            raise HTTPException(409, str(exc)) from exc
+        return source.workout.snapshot()
+
     @app.websocket("/ws/telemetry")
     async def stream(ws: WebSocket) -> None:
         if ws.headers.get("origin") not in (f"http://{ws.headers.get('host')}", f"https://{ws.headers.get('host')}"):
@@ -156,6 +98,7 @@ def create_app(config: Config | None = None, telemetry: Telemetry | None = None)
                     payload = {"status": "connecting", "simulated": not config.hardware}
                 else:
                     payload = {"status": "ready", **source.snapshot(), "history": list(source.history)}
+                payload["hr_zone_boundaries"] = list(config.hr_zone_boundaries)
                 payload["error"] = app.state.failure or payload.get("error")
                 await ws.send_json(payload)
                 await asyncio.sleep(1)
@@ -183,7 +126,7 @@ def main() -> None:
         if not 1 <= args.port <= 65535:
             raise ValueError("port must be within 1..65535")
     except (ValueError, TypeError, OSError):
-        parser.error("Konfiguration ungültig: TOML, trainer_id/hr_id und Port prüfen.")
+        parser.error("Konfiguration ungültig: TOML, trainer_id/hr_id, hr_zone_boundaries und Port prüfen.")
     import uvicorn
     uvicorn.run(create_app(config), host="127.0.0.1", port=args.port, access_log=False)
 

@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="de">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark"><title>KICKR Coach · Live</title><link rel="stylesheet" href="/static/style.css"><script src="/static/app.js" defer></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark"><title>KICKR Coach · Live</title><link rel="stylesheet" href="/static/style.css"><script type="module" src="/static/app.js"></script></head>
 <body>
 <header><a class="brand" href="/">KICKR<span>COACH</span></a><span class="local">LOKAL · PRIVAT</span></header>
 <main>
@@ -10,8 +10,14 @@
 <section class="metrics" aria-label="Aktuelle Messwerte">
 <article class="metric power"><div class="metric-top"><h2>Leistung</h2><span>KICKR / FTMS</span></div><div class="reading"><strong id="power">—</strong><span>W</span></div><div class="metric-bottom"><span id="trainer-fresh">Keine Daten</span><span id="trainer-age">—</span></div></article>
 <article class="metric"><div class="metric-top"><h2>Trittfrequenz</h2><span>CADENCE</span></div><div class="reading"><strong id="cadence">—</strong><span>rpm</span></div><div class="metric-bottom"><span>Dein aktueller Rhythmus</span></div></article>
-<article class="metric"><div class="metric-top"><h2>Herzfrequenz</h2><span class="heart">♡</span></div><div class="reading"><strong id="hr">—</strong><span>bpm</span></div><div class="metric-bottom"><span id="hr-fresh">Keine Daten</span><span id="hr-age">—</span></div></article>
+<article class="metric hr-zone-card" id="zone-card"><div class="metric-top"><h2>Deine Pulszone</h2><span class="heart">♡</span></div>
+<div class="zone-reading"><strong id="hr-zone">—</strong><span id="zone-range">Zonengrenzen noch nicht eingerichtet</span></div>
+<div id="zone-strip" class="zone-strip" aria-label="Pulszonen 1 bis 5"><span data-zone="1">Z1</span><span data-zone="2">Z2</span><span data-zone="3">Z3</span><span data-zone="4">Z4</span><span data-zone="5">Z5</span></div>
+<div class="hr-secondary"><span><strong id="hr">—</strong> bpm</span><span id="hr-fresh">Keine Daten</span><span id="hr-age">—</span></div>
+<details class="zone-settings"><summary>Deine Zonengrenzen</summary><ol id="zone-ranges"></ol><p>In deiner lokalen Konfiguration anpassbar. Nach einer Änderung die App neu starten.</p></details>
+</article>
 </section>
+<section id="workout-panel" class="panel workout-panel" hidden aria-label="Simuliertes Workout"><div class="panel-heading"><div><p class="eyebrow">WORKOUT · SIMULATOR</p><h2 id="workout-state">Wird vorbereitet …</h2></div><span class="badge">KEINE ECHTE TRAINERSTEUERUNG</span></div><div class="workout-select"><label for="workout-select">Workout</label><select id="workout-select"></select><button id="workout-load" type="button">Neu laden</button></div><div class="workout-stats"><div><span>ZIELLEISTUNG</span><strong id="target">—</strong><small id="planned">Noch kein Ziel bestätigt</small></div><div><span>AKTUELLER BLOCK</span><strong id="block">—</strong><small id="next-block">—</small></div><div><span>RESTZEIT</span><strong id="remaining">—</strong><small id="workout-elapsed">—</small></div></div><p id="override-info" class="subtle" hidden>Manueller Zielwert bis zum nächsten Block.</p><div class="workout-controls"><button id="start" type="button" data-action="start">Workout starten</button><button id="pause" type="button" data-action="pause">Pause</button><button id="resume" type="button" data-action="resume">Fortsetzen</button><button id="decrease" type="button" data-action="decrease">−5 W</button><button id="increase" type="button" data-action="increase">+5 W</button><button id="stop" type="button" data-action="stop">STOP</button></div><p id="workout-error" class="error" role="alert" hidden></p></section>
 <section class="panel"><div class="panel-heading"><div><p class="eyebrow">LIVE-VERLAUF</p><h2>Die letzten 3 Minuten</h2></div><span class="subtle">Jeweils eigene Skala</span></div><div class="charts">
 <div class="chart-row"><div class="chart-label"><span class="key lime"></span>Leistung <span id="power-scale">W</span></div><svg id="power-chart" viewBox="0 0 900 90" role="img" aria-label="Leistungsverlauf der letzten drei Minuten"><path/></svg></div>
 <div class="chart-row"><div class="chart-label"><span class="key blue"></span>Kadenz <span id="cadence-scale">rpm</span></div><svg id="cadence-chart" viewBox="0 0 900 90" role="img" aria-label="Kadenzverlauf der letzten drei Minuten"><path/></svg></div>
