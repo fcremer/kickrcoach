@@ -33,6 +33,21 @@ sichtbar gemeldet und im Terminal protokolliert. Neuladen des Browsers setzt
 weder Workout noch Freigabe zurück. Ctrl+C versucht Stop und trennt beide Geräte.
 Ohne `--enable-control` bleibt der Hardware-Modus ausschließlich lesend.
 
+## Trainings speichern und exportieren
+
+GUI-Trainings werden jetzt automatisch lokal aufgezeichnet. Unter
+**Gespeicherte Trainings** findest du nach dem Training eine Zusammenfassung,
+Messwertabdeckung sowie **TCX herunterladen** für den manuellen Strava-Import.
+**JSON für Nachbetrachtung** enthält außerdem Soll-/Ist-Werte, Messwertqualität,
+Pausen, Sicherheitsereignisse und den Workout-Snapshot für deine KI-Auswertung.
+RPE, Kühlung und Notizen kannst du nach dem Training ergänzen.
+
+Das Archiv bleibt bei Browser- und App-Neustarts erhalten. Standard auf macOS:
+`~/Library/Application Support/KICKR Coach/sessions.sqlite3`; mit `--data-dir`
+änderbar. Simulationen sind deutlich markiert und nur als JSON exportierbar.
+Frühere Trainings ohne Aufzeichnung lassen sich nicht nachträglich herstellen.
+Details und bekannte Grenzen: [Session recording](docs/SESSION_RECORDING.md).
+
 ## M2: Workout-Engine im Simulator
 
 ```sh

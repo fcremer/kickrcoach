@@ -34,8 +34,8 @@ function renderWorkout(workout, online=true) {
   el('workout-mode').textContent=hardware?'WORKOUT · KICKR':'WORKOUT · SIMULATOR';
   el('workout-control-mode').textContent=hardware?'ECHTE TRAINERSTEUERUNG · ERG':'KEINE ECHTE TRAINERSTEUERUNG';
   el('start').textContent=hardware?'Training am KICKR starten':'Workout starten';
-  el('workout-notice').hidden=!workout.notice;
-  el('workout-notice').textContent=workout.notice||'';
+  el('workout-notice').hidden=!(workout.notice||workout.recording_error);
+  el('workout-notice').textContent=[workout.notice,workout.recording_error].filter(Boolean).join(' ');
   el('workout-state').textContent=workoutStates[state]||state;
   el('target').textContent=workout.target_w===null?'—':`${workout.target_w} W`;
   el('planned').textContent=workout.planned_target_w===null?'Noch kein Ziel bestätigt':`Blockvorgabe: ${workout.planned_target_w} W${workout.maximum_w ? ` · Limit: ${workout.maximum_w} W` : ''}`;
@@ -129,3 +129,82 @@ function connect() {
 }
 setInterval(()=>{if(!lastMessage||performance.now()-lastMessage>3500) clearReadings('Keine aktuellen Serverdaten · warte auf Verbindung …');},1000);
 connect();
+
+let selectedSessionId = null;
+let feedbackSessionId = null;
+let latestRecordedSessionId = null;
+let archiveBusy = false;
+const archiveStates = {ACTIVE:'Aufzeichnung läuft',COMPLETED:'Abgeschlossen',ABORTED:'Gestoppt',INTERRUPTED:'Unterbrochen · App wurde unerwartet beendet',RECORDING_FAILED:'Aufzeichnungsfehler · Daten unvollständig'};
+function renderReview(session) {
+  const summary=session.summary;
+  el('session-feedback').hidden=session.status==='ACTIVE';
+  if(feedbackSessionId!==session.id) {
+    el('feedback-rpe').value=session.metadata.rpe??'';
+    el('feedback-cooling').value=session.metadata.cooling===null||session.metadata.cooling===undefined?'':session.metadata.cooling?'yes':'no';
+    el('feedback-notes').value=session.metadata.notes||'';
+    el('feedback-status').textContent='';
+    feedbackSessionId=session.id;
+  }
+  const value=(number,unit)=>number===null||number===undefined?'—':`${number} ${unit}`;
+  el('session-review').hidden=false;
+  el('review-name').textContent=session.metadata.workout.name;
+  el('review-status').textContent=`${session.metadata.simulated?'Simulation · ':''}${archiveStates[session.status]||session.status} · ${new Date(session.started_at).toLocaleString('de-DE')}`;
+  el('review-duration').textContent=time(summary.active_duration_sec);
+  el('review-timing').textContent=`Pausen: ${time(summary.paused_duration_sec||0)} · Wartezeit vor dem Losfahren: ${time(summary.waiting_duration_sec||0)}`;
+  el('review-power').textContent=`${value(summary.average_power_w,'W')} / ${value(summary.max_power_w,'W')}`;
+  el('review-hr').textContent=`${value(summary.average_bpm,'bpm')} / ${value(summary.max_bpm,'bpm')}`;
+  el('review-cadence').textContent=value(summary.average_cadence_rpm,'rpm');
+  el('review-quality').textContent=`Datenabdeckung während Trainingszeit: Leistung ${time(summary.coverage_power_w_sec)}, Puls ${time(summary.coverage_bpm_sec)}, Kadenz ${time(summary.coverage_cadence_rpm_sec)}. ${summary.sample_count} Messpunkte, ${summary.event_count} Ereignisse. Mittelwerte sind zeitgewichtet; Lücken und Pausen zählen nicht als Nullwerte.`;
+  const canExport=session.status!=='ACTIVE'&&!session.metadata.simulated&&summary.running_sample_count>0&&[summary.max_power_w,summary.max_bpm,summary.max_cadence_rpm].some(value=>value!==null&&value!==undefined);
+  el('download-tcx').hidden=!canExport;
+  el('download-tcx').href=`/api/sessions/${encodeURIComponent(session.id)}/download/tcx`;
+  el('download-json').href=`/api/sessions/${encodeURIComponent(session.id)}/download/json`;
+  el('review-export-info').textContent=session.metadata.simulated?'Simulationsdaten: JSON zur Prüfung verfügbar, kein TCX für Strava.':session.status==='ACTIVE'?'TCX steht nach dem Beenden bereit.':canExport?'TCX enthält gemessene Leistung, Puls und Kadenz. Distanz und Kalorien wurden nicht aufgezeichnet.':'Keine gefahrenen Messdaten für einen TCX-Export vorhanden.';
+}
+async function refreshSessions() {
+  if(archiveBusy) return;
+  archiveBusy=true;
+  try {
+    const response=await fetch('/api/sessions');
+    if(!response.ok) throw new Error('Archiv konnte nicht geladen werden.');
+    const sessions=await response.json();
+    el('session-list').replaceChildren();
+    if(!sessions.length) {const empty=document.createElement('p');empty.textContent='Noch keine Trainings gespeichert.';el('session-list').append(empty);el('session-review').hidden=true;}
+    if(latest?.workout?.session_id&&latest.workout.session_id!==latestRecordedSessionId) {selectedSessionId=latest.workout.session_id;latestRecordedSessionId=selectedSessionId;}
+    if(!sessions.some(session=>session.id===selectedSessionId)) selectedSessionId=sessions[0]?.id||null;
+    for(const session of sessions) {
+      const button=document.createElement('button');button.type='button';
+      button.textContent=`${new Date(session.started_at).toLocaleString('de-DE')} · ${session.name} · ${session.simulated?'Simulation · ':''}${archiveStates[session.status]||session.status}`;
+      button.setAttribute('aria-pressed',String(session.id===selectedSessionId));
+      button.addEventListener('click',()=>{if(archiveBusy)return;selectedSessionId=session.id;refreshSessions();});
+      el('session-list').append(button);
+    }
+    if(selectedSessionId) {
+      const detail=await fetch(`/api/sessions/${encodeURIComponent(selectedSessionId)}`);
+      if(!detail.ok) throw new Error('Training konnte nicht geladen werden.');
+      renderReview(await detail.json());
+    }
+    el('archive-error').hidden=true;
+  } catch(error) {el('archive-error').textContent=error.message||'Trainingsarchiv nicht erreichbar.';el('archive-error').hidden=false;}
+  finally {archiveBusy=false;}
+}
+el('sessions-refresh').addEventListener('click',refreshSessions);
+setInterval(refreshSessions,5000);
+refreshSessions();
+
+el('session-feedback').addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(!selectedSessionId||archiveBusy||feedbackSessionId!==selectedSessionId) return;
+  const identifier=selectedSessionId;
+  el('feedback-save').disabled=true;
+  try {
+    const response=await fetch(`/api/sessions/${encodeURIComponent(identifier)}/feedback`,{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        rpe:el('feedback-rpe').value===''?null:Number(el('feedback-rpe').value),
+        cooling:el('feedback-cooling').value===''?null:el('feedback-cooling').value==='yes',
+        notes:el('feedback-notes').value||null})});
+    if(!response.ok) throw new Error('Rückmeldung konnte nicht gespeichert werden.');
+    if(identifier===selectedSessionId) el('feedback-status').textContent='Rückmeldung gespeichert · auch im JSON enthalten.';
+  } catch(error) {el('feedback-status').textContent=error.message;}
+  finally {el('feedback-save').disabled=false;}
+});

@@ -4,7 +4,9 @@ Current capabilities: HR zones, independent device discovery/reconnect, simulate
 workouts and explicitly CLI-enabled hardware ERG controls. Hardware remains
 read-only without --enable-control. The sections below record the incremental
 implementation; the final hardware-control section supersedes earlier
-simulator-only restrictions. Full M3 recording acceptance is still pending.
+simulator-only restrictions. Local recording, review and TCX/JSON export are now
+implemented; see [SESSION_RECORDING.md](SESSION_RECORDING.md). Full M3/M4
+acceptance remains pending for the remaining deliverables.
 
 ## Scope and sequencing
 
@@ -262,3 +264,12 @@ The GUI CLI now starts directly, including with noninteractive stdin/stdout.
 workout or send a target. M0's distinct manual diagnostic confirmation remains
 unchanged. Tests verify no input() call in either control-enabled or read-only
 startup, correct server-side authorization and loopback binding.
+
+
+## Local session archive and review
+
+The earlier no-persistence descriptions above are historical. The current GUI
+records started workouts to SQLite independently of browser connections, with
+post-ride metrics, optional RPE/cooling/notes, TCX for real rides and full JSON
+for review. See [SESSION_RECORDING.md](SESSION_RECORDING.md) for timestamp,
+quality, failure/restart and export contracts and validation limitations.

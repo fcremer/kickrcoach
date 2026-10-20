@@ -22,6 +22,23 @@
 <div class="chart-row"><div class="chart-label"><span class="key lime"></span>Leistung <span id="power-scale">W</span></div><svg id="power-chart" viewBox="0 0 900 90" role="img" aria-label="Leistungsverlauf der letzten drei Minuten"><path/></svg></div>
 <div class="chart-row"><div class="chart-label"><span class="key blue"></span>Kadenz <span id="cadence-scale">rpm</span></div><svg id="cadence-chart" viewBox="0 0 900 90" role="img" aria-label="Kadenzverlauf der letzten drei Minuten"><path/></svg></div>
 <div class="chart-row"><div class="chart-label"><span class="key coral"></span>Puls <span id="hr-scale">bpm</span></div><svg id="hr-chart" viewBox="0 0 900 90" role="img" aria-label="Pulsverlauf der letzten drei Minuten"><path/></svg></div></div><div class="axis"><span>−3 min</span><span>−2 min</span><span>−1 min</span><span>Jetzt</span></div><p id="chart-empty" class="subtle">Der Verlauf füllt sich, sobald Messwerte eintreffen. Lücken bleiben sichtbar.</p></section>
+<section class="panel" aria-label="Gespeicherte Trainings">
+<div class="panel-heading"><div><p class="eyebrow">DEIN TRAININGSARCHIV</p><h2>Gespeicherte Trainings</h2></div><button type="button" id="sessions-refresh">Aktualisieren</button></div>
+<p class="subtle">Trainings werden lokal gespeichert. JSON enthält Messwerte, Signalqualität und Ereignisse für deine Nachbetrachtung.</p>
+<p id="archive-error" class="error" role="alert" hidden></p>
+<div id="session-list" class="session-list"><p>Noch keine Trainings gespeichert.</p></div>
+<div id="session-review" hidden>
+<h3 id="review-name"></h3><p id="review-status" class="subtle"></p>
+<div class="workout-stats review-stats"><div><span>TRAININGSZEIT</span><strong id="review-duration">—</strong></div><div><span>Ø / MAX LEISTUNG</span><strong id="review-power">—</strong></div><div><span>Ø / MAX PULS</span><strong id="review-hr">—</strong></div><div><span>Ø KADENZ</span><strong id="review-cadence">—</strong></div></div>
+<p id="review-timing" class="subtle"></p><p id="review-quality" class="subtle"></p><p id="review-export-info" class="subtle"></p>
+<form id="session-feedback" class="feedback-form">
+<label for="feedback-rpe">Belastung (RPE 0–10, optional)</label><input id="feedback-rpe" type="number" min="0" max="10" step="1">
+<label for="feedback-cooling">Ventilator / Kühlung</label><select id="feedback-cooling"><option value="">Nicht angegeben</option><option value="yes">Ja</option><option value="no">Nein</option></select>
+<label for="feedback-notes">Notizen zur Einheit</label><textarea id="feedback-notes" maxlength="4000" rows="3" placeholder="Wie lief es? Beine, Erholung, Auffälligkeiten …"></textarea>
+<button type="submit" id="feedback-save">Rückmeldung speichern</button><p id="feedback-status" role="status"></p>
+</form>
+<div class="archive-downloads"><a id="download-tcx" class="download" download>TCX herunterladen</a><a id="download-json" class="download" download>JSON für Nachbetrachtung</a></div>
+</div></section>
 <section class="connections" aria-label="Geräteverbindungen"><div><span class="connection-icon">↗</span><div><h2>Trainer</h2><p>Standard Bluetooth FTMS</p></div><span id="trainer-state" class="state">Wartet</span></div><div><span class="connection-icon">♡</span><div><h2>Pulssensor</h2><p>HeartCast / Bluetooth HRS</p></div><span id="hr-state" class="state">Wartet</span></div></section>
-<footer><span>KICKR COACH <span class="version">/ TELEMETRY PREVIEW</span></span><span>Verlauf nur im Arbeitsspeicher · Beenden mit Ctrl+C im Terminal</span></footer>
+<footer><span>KICKR COACH <span class="version">/ TELEMETRY PREVIEW</span></span><span>Trainingsarchiv lokal gespeichert · Beenden mit Ctrl+C im Terminal</span></footer>
 </main></body></html>
