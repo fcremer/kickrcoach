@@ -31,6 +31,7 @@ class TrainerControl:
         self.uncertain = False
         self._lock = asyncio.Lock()
         self._pending: tuple[int, asyncio.Future[int]] | None = None
+        self._poisoned: set[int] = set()
 
     def indication(self, _sender: object, data: bytearray) -> None:
         if len(data) != 3 or data[0] != 0x80:
@@ -50,6 +51,8 @@ class TrainerControl:
 
     async def _procedure(self, opcode: int, payload: bytes = b"") -> None:
         async with self._lock:
+            if opcode in self._poisoned:
+                raise ControlError("ambiguous previous procedure; reconnect before reusing opcode")
             if not self.transport.is_connected:
                 raise ControlError("trainer disconnected")
             if self.uncertain and opcode != 0x08:
@@ -73,6 +76,9 @@ class TrainerControl:
                 if opcode == 0:
                     self.owned = True
             except BaseException:
+                # FTMS has no transaction ID. A late Pause response (opcode 08)
+                # must never be mistaken for acknowledgement of a later Stop.
+                self._poisoned.add(opcode)
                 self.owned, self.uncertain = False, True
                 raise
             finally:
@@ -89,6 +95,9 @@ class TrainerControl:
 
     async def start(self) -> None:
         await self._procedure(7)
+
+    async def pause(self) -> None:
+        await self._procedure(8, b"\x02")
 
     async def stop(self) -> None:
         # Best effort even after uncertain ownership: result must still be checked.

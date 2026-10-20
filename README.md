@@ -1,11 +1,64 @@
-# KICKR Coach — M0 hardware feasibility probe
+# KICKR Coach — M1 adapter foundation
 
-This first executable version implements Issue #1 only. It scans/probes standard
+The original M0 command implements the diagnostic software for Issue #1. It scans/probes standard
 Bluetooth FTMS trainers and HRS heart-rate sources, including the intended
 KICKR CORE 2 + HeartCast path. Hardware compatibility is **not yet proven**.
-M1+ (workouts, web UI, database, analytics, adaptation) remains gated on real M0 acceptance.
+M1 adds shared trainer/HR contracts and deterministic simulators. Workouts, web UI,
+database, analytics and adaptation are not included. Real hardware acceptance remains pending.
 
-## Install and test
+
+## M1: shared adapters and deterministic simulation
+
+M1 was requested explicitly after the M0 draft. This is a stacked change based on
+PR #2; it does not declare M0 complete, merge that PR or close Issue #1.
+See [docs/M1_FOUNDATION.md](docs/M1_FOUNDATION.md) for contracts, state transitions,
+acceptance mapping and limitations.
+
+```sh
+uv sync --locked --extra dev
+uv run --locked pytest -q
+uv run --locked kickrcoach-adapters --steps 20
+uv run --locked kickrcoach-adapters --scenario stale-hr --steps 20
+uv run --locked kickrcoach-adapters --scenario rejected-control
+```
+
+The adapter demo always runs in memory, using virtual one-second steps. It
+opens no Bluetooth connection. Timeout, rejected-control and disconnect scenarios
+exit with code 1; stale HR/cadence collapse remain observable telemetry and do
+not implement M2 workout policy. All output is labelled `simulated`.
+
+Both simulator and real adapters satisfy the same runtime-checkable protocols:
+
+```python
+from kickrcoach.domain import TrainerAdapter, HeartRateSource
+from kickrcoach.simulation import ManualClock, SimulatedTrainer, SimulatedHeartRateSource
+
+# Inside an async function:
+clock = ManualClock()
+trainer: TrainerAdapter = SimulatedTrainer(clock=clock)
+hr: HeartRateSource = SimulatedHeartRateSource(clock=clock)
+await trainer.connect()               # read-only; no automatic control
+await hr.connect()
+try:
+    await trainer.request_control()  # verified FTMS response
+    await trainer.set_target_power(50)
+    await trainer.resume()           # requires a newly acknowledged target
+    # Consume immutable events from trainer.events / hr.events.
+finally:
+    await trainer.disconnect()       # attempts stop, even after command failure
+    await hr.disconnect()
+```
+
+For real hardware, explicitly select previously discovered device objects using
+`ble.discover()` / `ble.select()`, wrap each with `ble.transport_factory(device)`,
+and construct `trainer.FtmsTrainer(factory)` / `heart_rate.BleHeartRateSource(factory)`.
+The library API does not prompt; the calling application is responsible for
+explicit user authorization before requesting control. The M0 CLI still enforces
+its interactive hardware-control confirmation and remains the acceptance path.
+The conservative 100 W target ceiling remains in place pending hardware evidence
+and the M2 safety policy. HR loss does not change trainer power in M1.
+
+## M0: install and test
 
 Python 3.12+ and [uv](https://docs.astral.sh/uv/) are required for the locked workflow:
 
@@ -131,8 +184,9 @@ Issue #1 stays open until the real acceptance checklist is satisfied.
 - `simulator.py`: in-memory transport with fault scenarios.
 - `cli.py`: validated TOML/CLI configuration and explicit hardware consent.
 
-The simulator is a diagnostic test double, not a claim of CORE 2/HeartCast
-compatibility and not the full M1 adapter/state-machine implementation.
+The M0 transport simulator remains a diagnostic test double. M1 adapters live in
+`trainer.py`, `heart_rate.py`, `domain.py`, `transport.py` and `simulation.py`.
+Neither simulator establishes CORE 2/HeartCast hardware compatibility.
 See [SPEC.md](SPEC.md), [ARCHITECTURE.md](ARCHITECTURE.md),
 [AGENTS.md](AGENTS.md) and [MILESTONES.md](MILESTONES.md).
 

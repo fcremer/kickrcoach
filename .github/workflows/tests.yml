@@ -1,4 +1,4 @@
-name: M0 tests (no Bluetooth hardware)
+name: Protocol and adapter tests (no Bluetooth hardware)
 on: [push, pull_request]
 permissions:
   contents: read
@@ -16,3 +16,5 @@ jobs:
         run: python -m pytest -q
       - name: CLI smoke test (simulation)
         run: kickrcoach probe --duration-sec 2
+      - name: M1 deterministic adapter smoke test
+        run: kickrcoach-adapters --steps 20
