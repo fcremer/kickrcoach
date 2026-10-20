@@ -47,8 +47,10 @@ class WorkoutEngine:
     """
     def __init__(self, trainer: TrainerAdapter, hr: HeartRateSource, workout: Workout, *,
                  baseline_w: int | None = None, safety: SafetyController | None = None,
-                 config: WorkoutSafetyConfig | None = None, clock: Clock | None = None):
+                 config: WorkoutSafetyConfig | None = None, clock: Clock | None = None,
+                 manage_hr_connection: bool = True):
         self.trainer, self.hr, self.workout = trainer, hr, workout
+        self.manage_hr_connection = manage_hr_connection
         self.baseline_w = baseline_w
         self.safety = safety or SafetyController()
         self.config = config or WorkoutSafetyConfig()
@@ -156,18 +158,21 @@ class WorkoutEngine:
         await self.trainer.set_target_power(watts)
         self._event(f"target_confirmed:{reason}:{watts}")
 
-    async def prepare(self) -> None:
+    async def prepare(self, *, connect: bool = True) -> None:
         async with self._operation():
             self._require(WorkoutState.IDLE)
+            if not connect and self.trainer.connection != CS.CONNECTED:
+                raise WorkoutStateError("trainer not connected yet")
             self.state = WorkoutState.PREPARING
             self._event("preparing")
             # Resolve the entire immutable definition before connecting or controlling.
             self.targets = tuple(block.target.resolve(self.baseline_w) for block in self.workout.blocks)
-            results = await asyncio.gather(self.trainer.connect(), self.hr.connect(), return_exceptions=True)
-            if isinstance(results[0], BaseException):
-                raise ConnectionError("trainer setup failed")
-            if isinstance(results[1], BaseException):
-                self._event("hr_unavailable:static_workout_allowed")
+            if connect:
+                results = await asyncio.gather(self.trainer.connect(), self.hr.connect(), return_exceptions=True)
+                if isinstance(results[0], BaseException):
+                    raise ConnectionError("trainer setup failed")
+                if isinstance(results[1], BaseException):
+                    self._event("hr_unavailable:static_workout_allowed")
             caps = await self.trainer.capabilities()
             if not caps.can_set_power:
                 raise ValueError("confirmed target-power support and range required")
@@ -330,7 +335,7 @@ class WorkoutEngine:
                     await self._recover()
             # Reconnecting HR must never block trainer safety/scheduling ticks.
             now = self.clock.monotonic()
-            if (self.state in (WorkoutState.READY, WorkoutState.RUNNING, WorkoutState.PAUSED)
+            if (self.manage_hr_connection and self.state in (WorkoutState.READY, WorkoutState.RUNNING, WorkoutState.PAUSED)
                     and (self.hr.connection != CS.CONNECTED or self.hr.latest.freshness == Freshness.LOST)
                     and now >= self._next_hr_reconnect
                     and (self._hr_reconnect_task is None or self._hr_reconnect_task.done())):

@@ -29,6 +29,13 @@ function renderWorkout(workout, online=true) {
   el('workout-panel').hidden=!workout;
   if(!workout) return;
   const state=workout.state;
+  const hardware=workout.mode==='hardware';
+  el('workout-panel').setAttribute('aria-label',hardware?'Training am KICKR':'Simuliertes Workout');
+  el('workout-mode').textContent=hardware?'WORKOUT · KICKR':'WORKOUT · SIMULATOR';
+  el('workout-control-mode').textContent=hardware?'ECHTE TRAINERSTEUERUNG · ERG':'KEINE ECHTE TRAINERSTEUERUNG';
+  el('start').textContent=hardware?'Training am KICKR starten':'Workout starten';
+  el('workout-notice').hidden=!workout.notice;
+  el('workout-notice').textContent=workout.notice||'';
   el('workout-state').textContent=workoutStates[state]||state;
   el('target').textContent=workout.target_w===null?'—':`${workout.target_w} W`;
   el('planned').textContent=workout.planned_target_w===null?'Noch kein Ziel bestätigt':`Blockvorgabe: ${workout.planned_target_w} W`;
@@ -45,7 +52,7 @@ function renderWorkout(workout, online=true) {
   if(select.dataset.selected!==workout.selected) {select.value=workout.selected;select.dataset.selected=workout.selected;}
   const canSelect=['READY','ABORTED','COMPLETED'].includes(state)&&online&&!busy;
   select.disabled=!canSelect; el('workout-load').disabled=!canSelect;
-  for(const [id,allowed] of Object.entries({start:state==='READY',pause:state==='RUNNING',resume:state==='PAUSED',increase:state==='RUNNING',decrease:state==='RUNNING'})) el(id).disabled=!allowed||busy||!online;
+  for(const [id,allowed] of Object.entries({start:state==='READY'&&workout.can_start!==false,pause:state==='RUNNING',resume:state==='PAUSED'&&workout.can_resume!==false,increase:state==='RUNNING',decrease:state==='RUNNING'})) el(id).disabled=!allowed||busy||!online;
   el('stop').disabled=['IDLE','ABORTED','COMPLETED'].includes(state);
   if(!online) el('workout-state').textContent='Serverdaten fehlen · Zustand unbekannt';
 }
@@ -92,7 +99,7 @@ function chart(id, points, field, unit, now) {
 function render(data) {
   latest=data;
   renderWorkout(data.workout||null);
-  document.querySelector('.readonly').textContent=data.workout?'Workout-Steuerung ausschließlich simuliert':'Nur Anzeige · keine Widerstandssteuerung';
+  document.querySelector('.readonly').textContent=data.workout?(data.workout.mode==='hardware'?'ERG-Steuerung freigegeben · Start erfolgt manuell':'Workout-Steuerung ausschließlich simuliert'):'Nur Anzeige · keine Widerstandssteuerung';
   el('mode').textContent = data.simulated?'SIMULATION':'BLUETOOTH · LIVE';
   el('error').hidden=!data.error; el('error').textContent=data.error||'';
   if(data.status!=='ready') {clearReadings(data.error?'Verbindung fehlgeschlagen':'Geräte werden gesucht und verbunden …');return;}

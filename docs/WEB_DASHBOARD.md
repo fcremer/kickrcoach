@@ -1,4 +1,10 @@
-# Local telemetry dashboard preview
+# Local training dashboard
+
+Current capabilities: HR zones, independent device discovery/reconnect, simulated
+workouts and explicitly CLI-enabled hardware ERG controls. Hardware remains
+read-only without --enable-control. The sections below record the incremental
+implementation; the final hardware-control section supersedes earlier
+simulator-only restrictions. Full M3 recording acceptance is still pending.
 
 ## Scope and sequencing
 
@@ -154,3 +160,53 @@ cases, silent HR and transient scan failure. They assert that the healthy peer
 transport is preserved, old values do not become current, cleanup completes and
 all FTMS write logs stay empty. Physical late-start/reconnect behavior on the
 user's Mac remains a separate hardware observation, not a simulator claim.
+
+## Explicit hardware workout GUI — 2026-10-20
+
+At the user's request the GUI can now operate the real M2 trainer path. This is
+an explicit software integration, not a claim that an agent performed a physical
+load test or completed the remaining hardware acceptance record.
+
+The official CLI requires --hardware --enable-control and an interactive exact
+CONTROL <low bound> W confirmation before the web server/BLE startup. The default
+bound is 50 W (lowered by maximum_w). Config files cannot enable control and no
+unattended --yes exists. Without that flag, the previous read-only mode and its
+zero-write guarantees remain unchanged. HTTP commands still require same Origin,
+a strict action whitelist, an actual workout owner and server-side authorization;
+a client cannot enable control by modifying a payload or UI label.
+
+Discovery connects both sensors independently. An enabled hardware owner waits
+for the trainer, then validates the workout/capabilities without Request Control.
+HR setup never delays readiness. The first GUI Start checks fresh power/cadence,
+requests control, sets a confirmed low initial target (<=50 W and maximum_w), and
+starts only after FTMS success. Targets continue through SafetyController and the
+sole TrainerControl writer. UI labels distinguish real ERG control from simulation.
+Built-in low-power workouts, manual override and pause/STOP use the same engine.
+
+Exactly one component owns each lifecycle/event stream. During RUNNING/PAUSED,
+the idle trainer connector yields all trainer recovery to the engine; a shared
+session lock prevents setup/start races. The engine's prepare(connect=False)
+uses already discovered adapters and does not wait for/reconnect HR. The external
+HR supervisor is its sole connection owner, so engine HR reconnect is disabled
+in this runtime. One workout owner drains both event queues. Selecting a new
+workout preserves the healthy HR connection and never starts resistance.
+
+Trainer loss freezes time and invalidates control; recovery acknowledges a low
+target and requires fresh telemetry and explicit GUI resume. The previous manual
+high target is not restored. Resume is disabled while safe recovery is pending.
+STOP bypasses the session lock and cancels pending/queued work. Failed Stop is
+latched as a visible warning and error log, including on server shutdown; local
+ABORTED is never presented as confirmed physical release. Starting another
+session does not erase that warning. Idle connection supervision resumes only
+when the engine is terminal, and an uncertain adapter must reconnect before a
+new workout can be selected.
+
+Automated hardware-path tests use fixed fake advertisements and MemoryTransport,
+not physical devices. They verify no writes before Start, actual FTMS command
+order/acknowledgements, absent/late HR, start cadence and low-power requirements,
+manual/pause/resume/STOP through HTTP, shared browser state, exclusive reconnect,
+unconfirmed Stop display and active-session shutdown. CLI tests verify exact
+confirmation, refusal/cancellation/EOF/noninteractive paths before server startup.
+The normal CI remains hardware-free. Real browser visual QA and physical load
+response remain unverified by this agent; the existing hardware record is not
+silently upgraded. Recording, SQLite and full M3 acceptance remain separate.

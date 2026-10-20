@@ -1,4 +1,29 @@
-# KICKR Coach — local telemetry dashboard
+# KICKR Coach — local training dashboard
+
+## Training über die Webansicht steuern
+
+```sh
+uv run --locked kickrcoach-web --hardware --enable-control --config config.toml
+```
+
+Im Terminal einmal pro Serverstart die angezeigte Freigabe exakt eingeben
+(bei Standardkonfiguration **CONTROL 50 W**). Das erfüllt die explizite
+CLI-Bestätigung aus AGENTS.md. Bis zum Klick auf **Training am KICKR starten**
+bleiben Verbindung und Workout-Vorbereitung lesend.
+
+Unter **http://127.0.0.1:8000** ein Workout auswählen, treten und starten.
+Zielleistung, aktueller/nächster Block und Restzeit erscheinen in der GUI.
+Pause, Fortsetzen, ±5 W und STOP steuern den echten Trainer über dieselbe
+M2-Sicherheitslogik wie im Simulator. Das 4-Minuten-Workout beginnt bei 40 W;
+Starts sind auf höchstens 50 W und alle Ziele auf die konfigurierte Grenze
+`maximum_w` (höchstens 100 W) begrenzt. Ein fehlender Pulssensor blockiert
+statisches Training nicht; frische Trainerleistung und sichere Kadenz sind nötig.
+
+Nach Trainerverlust pausiert die Zeit. Die App verbindet sich mit niedrigem
+Ziel neu, startet aber erst nach **Fortsetzen**. Ein nicht bestätigter STOP wird
+sichtbar gemeldet und im Terminal protokolliert. Neuladen des Browsers setzt
+weder Workout noch Freigabe zurück. Ctrl+C versucht Stop und trennt beide Geräte.
+Ohne `--enable-control` bleibt der Hardware-Modus ausschließlich lesend.
 
 ## M2: Workout-Engine im Simulator
 
@@ -10,8 +35,8 @@ uv run --locked kickrcoach-workout workouts/baseline.yaml
 Die validierte YAML-Datei läuft mit virtueller Zeit durch alle ERG-Blöcke.
 Die Engine unterstützt Pause/Fortsetzen, -5/+5 W pro aktuellem Block, STOP,
 Kadenz-/Telemetrie-Schutz und sichere Wiederverbindung. Der neue Startbefehl
-ist ausschließlich simuliert; reale Workout-Steuerung bleibt bis zur Hardware-Abnahme
-gesperrt. Die Webansicht bietet im Simulator Workout-Bedienelemente; mit echten Geräten bleibt sie eine Live-Anzeige.
+ist ausschließlich simuliert. Die Webansicht kann dieselbe Engine nach der
+oben beschriebenen expliziten Freigabe am echten Trainer verwenden.
 
 Fehlerfälle lassen sich mit `--scenario cadence-collapse`, `disconnect`,
 `stale-hr`, `timeout` oder `rejected-control` auslösen. Statisches Training läuft
@@ -22,8 +47,8 @@ fortgesetzt. Details, API, Sicherheitsgrenzen und Abnahme:
 ## Webansicht starten
 
 Die erste Webversion zeigt Leistung, Trittfrequenz, Puls, Messwertalter,
-Geräteverbindungen und einen flüchtigen 3-Minuten-Verlauf. Mit echten Geräten ist sie ausschließlich
-lesend und sendet auch beim Beenden keine Trainer-Steuerbefehle.
+Geräteverbindungen und einen flüchtigen 3-Minuten-Verlauf. Mit dem folgenden
+Startbefehl bleibt sie ausschließlich lesend und sendet keine Steuerbefehle:
 
 ```sh
 uv sync --locked --extra dev

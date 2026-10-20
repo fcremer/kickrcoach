@@ -1,4 +1,4 @@
-"""Independent, retrying read-only BLE sessions for the web dashboard."""
+"""Independent BLE discovery with exclusive workout ownership when enabled."""
 import asyncio
 import logging
 import math
@@ -9,13 +9,16 @@ from .heart_rate import BleHeartRateSource
 from .protocol import FTMS, HRS
 from .telemetry import Telemetry
 from .trainer import FtmsTrainer
+from .web_workout import WebWorkout
+from .engine import WorkoutState
+from .safety import SafetyController
 from .transport import Lost, GattTransport
 
 log = logging.getLogger(__name__)
 
 
 class HardwareTelemetry(Telemetry):
-    def __init__(self, config: Config, *, retry_sec: float = 3):
+    def __init__(self, config: Config, *, retry_sec: float = 3, control_enabled: bool = False):
         if not math.isfinite(retry_sec) or retry_sec <= 0:
             raise ValueError("retry interval must be finite and positive")
         self.config = config
@@ -31,9 +34,11 @@ class HardwareTelemetry(Telemetry):
         def hr_factory(callback: Lost) -> GattTransport:
             return ble.transport_factory(self._devices['hr'])(callback)
 
-        trainer = FtmsTrainer(trainer_factory, command_timeout_sec=config.command_timeout_sec)
+        trainer = FtmsTrainer(trainer_factory, command_timeout_sec=config.command_timeout_sec,
+                              safety=SafetyController(config.maximum_w))
         hr = BleHeartRateSource(hr_factory, stale_sec=config.stale_sec, lost_sec=config.lost_sec)
-        super().__init__(trainer, hr, simulated=False, stale_sec=config.stale_sec, lost_sec=config.lost_sec)
+        session = WebWorkout(trainer=trainer,hr=hr,hardware=True,maximum_w=config.maximum_w) if control_enabled else None
+        super().__init__(trainer, hr, simulated=False, stale_sec=config.stale_sec, lost_sec=config.lost_sec,workout=session)
 
     def snapshot(self) -> dict:
         payload = super().snapshot()
@@ -76,6 +81,10 @@ class HardwareTelemetry(Telemetry):
                 if not silent_hr:
                     await asyncio.sleep(min(0.25,self.retry_sec))
                     continue
+            if role == 'trainer' and self.workout and self.workout.engine.state in (WorkoutState.RUNNING,WorkoutState.PAUSED):
+                # The workout engine alone owns controlled reconnect/recovery.
+                await asyncio.sleep(min(.25,self.retry_sec))
+                continue
             if role == 'trainer':
                 self.sample = None
             self._detail[role] = 'Wird gesucht …'
@@ -88,10 +97,17 @@ class HardwareTelemetry(Telemetry):
                 continue
             self._detail[role] = 'Verbindet …'
             try:
-                # Cleanup only this sensor. There has never been a control request,
-                # so FtmsTrainer.disconnect sends no FTMS Stop/target command.
-                await source.disconnect()
-                await source.connect()
+                # Cleanup only this sensor. Active trainer recovery belongs to
+                # the engine; idle cleanup cannot race a workout operation.
+                if role == 'trainer' and self.workout:
+                    async with self.workout.lock:
+                        if self.workout.engine.state in (WorkoutState.RUNNING,WorkoutState.PAUSED):
+                            continue
+                        await source.disconnect()
+                        await source.connect()
+                else:
+                    await source.disconnect()
+                    await source.connect()
                 self._detail[role] = 'Verbunden'
                 self._connected_at[role] = self.clock.monotonic()
             except Exception:
@@ -107,20 +123,30 @@ class HardwareTelemetry(Telemetry):
     async def collect(self) -> None:
         tasks = [asyncio.create_task(self._scan()),
                  asyncio.create_task(self._connect('trainer')),
-                 asyncio.create_task(self._connect('hr')),
-                 asyncio.create_task(self.consume(self.trainer)),
-                 asyncio.create_task(self.consume(self.hr))]
+                 asyncio.create_task(self._connect('hr'))]
+        if self.workout is None:
+            tasks.extend([asyncio.create_task(self.consume(self.trainer)),
+                          asyncio.create_task(self.consume(self.hr))])
+        ticks = 0
         try:
             while True:
-                self.sequence += 1
-                point = self.snapshot()
-                self.history.append({'t':point['elapsed_sec'],'power':point['trainer']['power_w'],
-                                     'cadence':point['trainer']['cadence_rpm'],'hr':point['hr']['bpm']})
-                await asyncio.sleep(1)
+                if self.workout is not None:
+                    await self.workout.step()
+                    self.sample = self.workout.sample
+                if ticks % (4 if self.workout else 1) == 0:
+                    self.sequence += 1
+                    point = self.snapshot()
+                    self.history.append({'t':point['elapsed_sec'],'power':point['trainer']['power_w'],
+                                         'cadence':point['trainer']['cadence_rpm'],'hr':point['hr']['bpm']})
+                ticks += 1
+                await asyncio.sleep(.25 if self.workout else 1)
         finally:
             for task in tasks:
                 task.cancel()
             await asyncio.gather(*tasks,return_exceptions=True)
-            results = await asyncio.gather(self.trainer.disconnect(),self.hr.disconnect(),return_exceptions=True)
-            if any(isinstance(result,BaseException) for result in results):
-                log.error('Device cleanup unconfirmed; check Bluetooth connections')
+            if self.workout:
+                await self.workout.close()
+            else:
+                results = await asyncio.gather(self.trainer.disconnect(),self.hr.disconnect(),return_exceptions=True)
+                if any(isinstance(result,BaseException) for result in results):
+                    log.error('Device cleanup unconfirmed; check Bluetooth connections')

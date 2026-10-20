@@ -86,3 +86,19 @@ test('unconfigured zones are explicit and never use default thresholds',()=>{
   assert.equal(ui.get('hr-zone').textContent,'Zonen fehlen');
   assert.equal(ui.get('hr').textContent,125);
 });
+
+test('real control is explicitly labelled and recovery disables resume until armed',()=>{
+  const ui=dashboard(),data=payload();
+  data.simulated=false;data.workout.mode='hardware';data.workout.can_start=false;
+  ui.render(data);
+  assert.equal(ui.get('start').textContent,'Training am KICKR starten');
+  assert.equal(ui.get('start').disabled,true);
+  assert.match(ui.get('workout-control-mode').textContent,/ECHTE TRAINERSTEUERUNG/);
+  data.workout.state='PAUSED';data.workout.can_resume=false;
+  data.workout.notice='STOP wurde nicht bestätigt.';ui.render(data);
+  assert.equal(ui.get('resume').disabled,true);
+  assert.equal(ui.get('workout-notice').hidden,false);
+  assert.match(ui.get('workout-notice').textContent,/nicht bestätigt/);
+  data.workout.can_resume=true;ui.render(data);
+  assert.equal(ui.get('resume').disabled,false);
+});

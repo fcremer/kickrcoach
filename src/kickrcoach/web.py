@@ -1,8 +1,9 @@
-"""Local telemetry dashboard; workout control is restricted to simulation."""
+"""Local dashboard with optional, explicitly enabled hardware workout control."""
 import argparse
 import asyncio
 from contextlib import asynccontextmanager
 import logging
+import sys
 from pathlib import Path
 import tomllib
 from typing import AsyncIterator, Literal
@@ -30,7 +31,7 @@ class WorkoutCommand(BaseModel):
     selected: str | None = None
 
 
-def create_app(config: Config | None = None, telemetry: Telemetry | None = None) -> FastAPI:
+def create_app(config: Config | None = None, telemetry: Telemetry | None = None, *, enable_control: bool = False) -> FastAPI:
     config = config or Config()
     config.validate()
 
@@ -50,7 +51,7 @@ def create_app(config: Config | None = None, telemetry: Telemetry | None = None)
             async def run() -> None:
                 try:
                     if config.hardware and telemetry is None:
-                        app.state.telemetry = HardwareTelemetry(config)
+                        app.state.telemetry = HardwareTelemetry(config,control_enabled=enable_control)
                     await app.state.telemetry.collect()
                 except Exception:
                     app.state.failure = "Bluetooth-Verbindung fehlgeschlagen. Geräte einschalten, IDs und Berechtigung prüfen; App neu starten."
@@ -77,8 +78,8 @@ def create_app(config: Config | None = None, telemetry: Telemetry | None = None)
         if request.headers.get("origin") != str(request.base_url).rstrip("/"):
             raise HTTPException(403, "Zugriff nur aus der lokalen Webansicht.")
         source = app.state.telemetry
-        if config.hardware or source is None or source.workout is None or not source.simulated:
-            raise HTTPException(403, "Workout-Steuerung ist ausschließlich im Simulator verfügbar.")
+        if source is None or source.workout is None or (not source.simulated and not enable_control):
+            raise HTTPException(403, "Echte Trainingssteuerung muss beim Serverstart ausdrücklich freigegeben werden.")
         try:
             await source.workout.command(body.action, body.selected)
         except (ValueError, RuntimeError) as exc:
@@ -110,7 +111,8 @@ def create_app(config: Config | None = None, telemetry: Telemetry | None = None)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--hardware", action="store_true", help="Connect read-only to configured BLE devices")
+    parser.add_argument("--hardware", action="store_true", help="Connect to configured BLE devices (read-only unless --enable-control)")
+    parser.add_argument("--enable-control", action="store_true", help="Enable hardware GUI commands after interactive CLI confirmation")
     parser.add_argument("--config", type=Path)
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
@@ -127,8 +129,29 @@ def main() -> None:
             raise ValueError("port must be within 1..65535")
     except (ValueError, TypeError, OSError):
         parser.error("Konfiguration ungültig: TOML, trainer_id/hr_id, hr_zone_boundaries und Port prüfen.")
+    if args.enable_control:
+        if not args.hardware:
+            parser.error("--enable-control requires --hardware")
+        if not sys.stdin.isatty() or not sys.stdout.isatty():
+            parser.error("Hardware-Steuerung benötigt eine interaktive CLI-Bestätigung.")
+        phrase = f"CONTROL {min(50,config.maximum_w)} W"
+        print(f"GUI-Steuerung am echten Trainer: Starts bis {min(50,config.maximum_w)} W, Grenze {config.maximum_w} W. "
+              "Discovery bleibt lesend; erst Workout starten sendet Steuerbefehle.")
+        try:
+            confirmed = input(f"Zur Freigabe exakt {phrase} eingeben: ").strip() == phrase
+        except EOFError:
+            confirmed = False
+        except KeyboardInterrupt:
+            parser.exit(130,"Steuerung abgebrochen.\n")
+        if not confirmed:
+            parser.exit(2,"Steuerung nicht freigegeben.\n")
     import uvicorn
-    uvicorn.run(create_app(config), host="127.0.0.1", port=args.port, access_log=False)
+    from copy import deepcopy
+    from uvicorn.config import LOGGING_CONFIG
+    log_config = deepcopy(LOGGING_CONFIG)
+    log_config['loggers']['kickrcoach'] = {'handlers':['default'], 'level':'INFO', 'propagate':False}
+    uvicorn.run(create_app(config,enable_control=args.enable_control), host="127.0.0.1", port=args.port,
+                access_log=False, log_config=log_config)
 
 
 if __name__ == "__main__":
