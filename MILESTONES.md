@@ -79,6 +79,12 @@ Acceptance:
 - trainer disconnect pauses session and never auto-restores high target
 - cadence-collapse scenario invokes configured safety response
 
+M2 implementation record (2026-10-20): the simulator-based engine, YAML schema,
+safety/recovery policy and automated acceptance evidence are documented in
+[docs/M2_WORKOUT_ENGINE.md](docs/M2_WORKOUT_ENGINE.md). Real workout control remains
+gated on the outstanding M0 hardware acceptance; no hardware workout runner or
+web controls are exposed by this increment.
+
 ## M3 — Recording + local API/UI
 
 Goal: usable ride application.

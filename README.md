@@ -1,5 +1,24 @@
 # KICKR Coach — local telemetry dashboard
 
+## M2: Workout-Engine im Simulator
+
+```sh
+uv sync --locked --extra dev
+uv run --locked kickrcoach-workout workouts/baseline.yaml
+```
+
+Die validierte YAML-Datei läuft mit virtueller Zeit durch alle ERG-Blöcke.
+Die Engine unterstützt Pause/Fortsetzen, -5/+5 W pro aktuellem Block, STOP,
+Kadenz-/Telemetrie-Schutz und sichere Wiederverbindung. Der neue Startbefehl
+ist ausschließlich simuliert; reale Workout-Steuerung bleibt bis zur Hardware-Abnahme
+gesperrt. Die Webansicht bleibt vorerst eine Live-Anzeige.
+
+Fehlerfälle lassen sich mit `--scenario cadence-collapse`, `disconnect`,
+`stale-hr`, `timeout` oder `rejected-control` auslösen. Statisches Training läuft
+bei Pulsausfall weiter; nach Trainerverlust wird kein Training automatisch
+fortgesetzt. Details, API, Sicherheitsgrenzen und Abnahme:
+[docs/M2_WORKOUT_ENGINE.md](docs/M2_WORKOUT_ENGINE.md).
+
 ## Webansicht starten
 
 Die erste Webversion zeigt Leistung, Trittfrequenz, Puls, Messwertalter,
