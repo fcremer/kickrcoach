@@ -1,0 +1,12 @@
+# Copy to config.local.toml (ignored). Only CLI flags enable hardware/control.
+duration_sec = 600
+scan_sec = 10
+stale_sec = 5
+lost_sec = 15
+command_timeout_sec = 5
+test_sec = 10
+target_w = 50
+maximum_w = 100
+# Use identifiers returned by `kickrcoach scan --hardware` on THIS Mac.
+trainer_id = ""
+hr_id = ""
