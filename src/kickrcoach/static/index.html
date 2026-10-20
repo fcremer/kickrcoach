@@ -2,29 +2,36 @@
 <html lang="de">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark"><title>KICKR Coach · Live</title><link rel="stylesheet" href="/static/style.css"><script type="module" src="/static/app.js"></script></head>
 <body>
-<header><a class="brand" href="/">KICKR<span>COACH</span></a><span class="local">LOKAL · PRIVAT</span></header>
+<header class="app-header">
+<a class="brand" href="/" aria-label="KICKR Coach">KICKR<span>COACH</span></a>
+<div class="device-status" role="group" aria-label="Geräteverbindungen">
+<span class="device"><span class="device-name">KICKR</span><span id="trainer-state" class="state" data-live="false">Nicht verbunden</span></span>
+<span class="device"><span class="device-name">Puls</span><span id="hr-state" class="state" data-live="false">Nicht verbunden</span></span>
+</div>
+</header>
 <main>
-<section class="heading"><div><p class="eyebrow">DEIN RIDE. IM BLICK.</p><h1>Live Cockpit<span class="dot">.</span></h1><p class="intro">Leistung, Rhythmus und Puls. Alles an einem Ort.</p></div><div class="session"><span id="clock-label">BEOBACHTUNGSZEIT</span><strong id="elapsed">00:00</strong></div></section>
-<div class="toolbar"><span id="mode" class="badge">Verbinde …</span><span id="stream" role="status" aria-live="polite">Warte auf Daten</span><span class="readonly">Nur Anzeige · keine Widerstandssteuerung</span></div>
+<h1 class="sr-only">Trainingsdaten</h1>
+<div class="telemetry-bar"><div class="toolbar"><span id="mode" class="badge">Verbinde …</span><span id="stream" role="status" aria-live="polite">Warte auf Daten</span><span class="readonly">Nur Anzeige</span></div><div class="session"><span id="clock-label">BEOBACHTUNGSZEIT</span><strong id="elapsed">00:00</strong></div></div>
 <p id="error" class="error" role="alert" hidden></p>
 <section class="metrics" aria-label="Aktuelle Messwerte">
-<article class="metric power"><div class="metric-top"><h2>Leistung</h2><span>KICKR / FTMS</span></div><div class="reading"><strong id="power">—</strong><span>W</span></div><div class="metric-bottom"><span id="trainer-fresh">Keine Daten</span><span id="trainer-age">—</span></div></article>
-<article class="metric"><div class="metric-top"><h2>Trittfrequenz</h2><span>CADENCE</span></div><div class="reading"><strong id="cadence">—</strong><span>rpm</span></div><div class="metric-bottom"><span>Dein aktueller Rhythmus</span></div></article>
-<article class="metric hr-zone-card" id="zone-card"><div class="metric-top"><h2>Deine Pulszone</h2><span class="heart">♡</span></div>
+<article class="metric power"><div class="metric-top"><h2>Leistung</h2><span>IST</span></div><div class="reading"><strong id="power">—</strong><span>W</span></div><div class="metric-bottom"><span id="trainer-fresh">Keine Daten</span><span id="trainer-age">—</span></div></article>
+<article class="metric"><div class="metric-top"><h2>Trittfrequenz</h2><span>CADENCE</span></div><div class="reading"><strong id="cadence">—</strong><span>rpm</span></div></article>
+<article class="metric hr-zone-card" id="zone-card"><div class="metric-top"><h2>Pulszone</h2><span class="heart">♡</span></div>
 <div class="zone-reading"><strong id="hr-zone">—</strong><span id="zone-range">Zonengrenzen noch nicht eingerichtet</span></div>
 <div id="zone-strip" class="zone-strip" aria-label="Pulszonen 1 bis 5"><span data-zone="1">Z1</span><span data-zone="2">Z2</span><span data-zone="3">Z3</span><span data-zone="4">Z4</span><span data-zone="5">Z5</span></div>
 <div class="hr-secondary"><span><strong id="hr">—</strong> bpm</span><span id="hr-fresh">Keine Daten</span><span id="hr-age">—</span></div>
-<details class="zone-settings"><summary>Deine Zonengrenzen</summary><ol id="zone-ranges"></ol><p>In deiner lokalen Konfiguration anpassbar. Nach einer Änderung die App neu starten.</p></details>
+<details class="zone-settings"><summary>Zonengrenzen</summary><ol id="zone-ranges"></ol></details>
 </article>
 </section>
+<div class="training-grid">
 <section id="workout-panel" class="panel workout-panel" hidden aria-label="Simuliertes Workout"><div class="panel-heading"><div><p class="eyebrow" id="workout-mode">WORKOUT · SIMULATOR</p><h2 id="workout-state">Wird vorbereitet …</h2></div><span class="badge" id="workout-control-mode">KEINE ECHTE TRAINERSTEUERUNG</span></div><div class="workout-select"><label for="workout-select">Workout</label><select id="workout-select"></select><button id="workout-load" type="button">Neu laden</button></div><div class="workout-stats"><div><span>ZIELLEISTUNG</span><strong id="target">—</strong><small id="planned">Noch kein Ziel bestätigt</small></div><div><span>AKTUELLER BLOCK</span><strong id="block">—</strong><small id="next-block">—</small></div><div><span>RESTZEIT</span><strong id="remaining">—</strong><small id="workout-elapsed">—</small></div></div><p id="override-info" class="subtle" hidden>Manueller Zielwert bis zum nächsten Block.</p><div class="workout-controls"><button id="start" type="button" data-action="start">Workout starten</button><button id="pause" type="button" data-action="pause">Pause</button><button id="resume" type="button" data-action="resume">Fortsetzen</button><button id="decrease" type="button" data-action="decrease">−5 W</button><button id="increase" type="button" data-action="increase">+5 W</button><button id="stop" type="button" data-action="stop">STOP</button></div><p id="workout-notice" class="error" role="alert" hidden></p><p id="workout-error" class="error" role="alert" hidden></p></section>
-<section class="panel"><div class="panel-heading"><div><p class="eyebrow">LIVE-VERLAUF</p><h2>Die letzten 3 Minuten</h2></div><span class="subtle">Jeweils eigene Skala</span></div><div class="charts">
+<section class="panel chart-panel"><div class="panel-heading"><div><h2>Verlauf · 3 Minuten</h2></div><span class="subtle">Jeweils eigene Skala</span></div><div class="charts">
 <div class="chart-row"><div class="chart-label"><span class="key lime"></span>Leistung <span id="power-scale">W</span></div><svg id="power-chart" viewBox="0 0 900 90" role="img" aria-label="Leistungsverlauf der letzten drei Minuten"><path/></svg></div>
 <div class="chart-row"><div class="chart-label"><span class="key blue"></span>Kadenz <span id="cadence-scale">rpm</span></div><svg id="cadence-chart" viewBox="0 0 900 90" role="img" aria-label="Kadenzverlauf der letzten drei Minuten"><path/></svg></div>
-<div class="chart-row"><div class="chart-label"><span class="key coral"></span>Puls <span id="hr-scale">bpm</span></div><svg id="hr-chart" viewBox="0 0 900 90" role="img" aria-label="Pulsverlauf der letzten drei Minuten"><path/></svg></div></div><div class="axis"><span>−3 min</span><span>−2 min</span><span>−1 min</span><span>Jetzt</span></div><p id="chart-empty" class="subtle">Der Verlauf füllt sich, sobald Messwerte eintreffen. Lücken bleiben sichtbar.</p></section>
-<section class="panel" aria-label="Gespeicherte Trainings">
-<div class="panel-heading"><div><p class="eyebrow">DEIN TRAININGSARCHIV</p><h2>Gespeicherte Trainings</h2></div><button type="button" id="sessions-refresh">Aktualisieren</button></div>
-<p class="subtle">Trainings werden lokal gespeichert. JSON enthält Messwerte, Signalqualität und Ereignisse für deine Nachbetrachtung.</p>
+<div class="chart-row"><div class="chart-label"><span class="key coral"></span>Puls <span id="hr-scale">bpm</span></div><svg id="hr-chart" viewBox="0 0 900 90" role="img" aria-label="Pulsverlauf der letzten drei Minuten"><path/></svg></div></div><div class="axis"><span>−3 min</span><span>−2 min</span><span>−1 min</span><span>Jetzt</span></div><p id="chart-empty" class="subtle">Keine Messdaten.</p></section>
+</div>
+<section class="panel archive-panel" aria-label="Gespeicherte Trainings">
+<div class="panel-heading"><div><h2>Gespeicherte Trainings</h2></div><button type="button" id="sessions-refresh">Aktualisieren</button></div>
 <p id="archive-error" class="error" role="alert" hidden></p>
 <div id="session-list" class="session-list"><p>Noch keine Trainings gespeichert.</p></div>
 <div id="session-review" hidden>
@@ -39,6 +46,4 @@
 </form>
 <div class="archive-downloads"><a id="download-tcx" class="download" download>TCX herunterladen</a><a id="download-json" class="download" download>JSON für Nachbetrachtung</a></div>
 </div></section>
-<section class="connections" aria-label="Geräteverbindungen"><div><span class="connection-icon">↗</span><div><h2>Trainer</h2><p>Standard Bluetooth FTMS</p></div><span id="trainer-state" class="state">Wartet</span></div><div><span class="connection-icon">♡</span><div><h2>Pulssensor</h2><p>HeartCast / Bluetooth HRS</p></div><span id="hr-state" class="state">Wartet</span></div></section>
-<footer><span>KICKR COACH <span class="version">/ TELEMETRY PREVIEW</span></span><span>Trainingsarchiv lokal gespeichert · Beenden mit Ctrl+C im Terminal</span></footer>
 </main></body></html>

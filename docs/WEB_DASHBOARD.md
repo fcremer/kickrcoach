@@ -273,3 +273,27 @@ records started workouts to SQLite independently of browser connections, with
 post-ride metrics, optional RPE/cooling/notes, TCX for real rides and full JSON
 for review. See [SESSION_RECORDING.md](SESSION_RECORDING.md) for timestamp,
 quality, failure/restart and export contracts and validation limitations.
+
+
+## Training-focused tablet layout
+
+The hero headline/tagline and bottom device cards have been removed at the
+user's request. A compact sticky header shows KICKR/HR connection state with
+text and a small indicator; source detail remains in the title attribute.
+Disconnected/connecting/degraded devices read “Nicht verbunden”; missing server
+data reads “Unbekannt”, never a cached connected state. HR signal freshness is
+still shown separately in the HR card.
+
+Main content starts with a compact timer/status strip and large power, cadence
+and primary HR-zone readings. At widths of 1000 CSS pixels and above, workout
+controls and the three-minute chart sit side by side. At tablet portrait widths
+the metrics remain in three columns; below 760 CSS pixels the zone takes the
+first row and panels stack. Controls/downloads have minimum 44px touch targets.
+Archive/review stays below the live training data. Decorative and explanatory
+copy has been reduced; trainer/safety warnings remain explicit.
+
+This targets the available space on a 13-inch iPad in both orientations without
+changing network binding or trainer control. Existing dashboard tests plus
+independent device-state/server-loss assertions pass. Physical iPad/Safari
+visual acceptance remains unverified; computer-use permissions were unavailable
+in this session. No rendering measurements on the real device are claimed.

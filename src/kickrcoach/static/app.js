@@ -16,7 +16,7 @@ function renderZone(bpm, freshness, boundaries) {
   const configured = validBoundaries(boundaries);
   const zone = zoneFor(bpm,freshness,boundaries);
   el('hr-zone').textContent = zone ? `Zone ${zone}` : configured ? '—' : 'Zonen fehlen';
-  el('zone-range').textContent = zone ? zoneRange(zone,boundaries) : configured ? 'Warte auf aktuellen Puls' : 'Bitte Zonengrenzen in der Konfiguration hinterlegen';
+  el('zone-range').textContent = zone ? zoneRange(zone,boundaries) : configured ? 'Kein aktueller Puls' : 'Zonen nicht konfiguriert';
   el('zone-card').style.setProperty('--zone-color',zone ? zoneColors[zone-1] : '#efefea');
   for(const segment of el('zone-strip').children) segment.setAttribute('aria-current',String(Number(segment.dataset.zone)===zone));
   el('zone-ranges').replaceChildren();
@@ -79,7 +79,7 @@ function clearReadings(message) {
   renderZone(null,'LOST',latest?.hr_zone_boundaries||[]);
   if(latest) renderWorkout(latest.workout,false);
   for (const id of ['trainer-fresh','hr-fresh']) el(id).textContent = 'Keine aktuellen Daten';
-  for (const id of ['trainer-state','hr-state']) {el(id).textContent='Unbekannt';el(id).dataset.live='false';}
+  for (const id of ['trainer-state','hr-state']) {el(id).textContent='Unbekannt';el(id).dataset.live='false';el(id).title='Keine aktuellen Serverdaten';}
   for (const id of ['trainer-age','hr-age']) el(id).textContent='—';
 }
 function chart(id, points, field, unit, now) {
@@ -99,11 +99,11 @@ function chart(id, points, field, unit, now) {
 function render(data) {
   latest=data;
   renderWorkout(data.workout||null);
-  document.querySelector('.readonly').textContent=data.workout?(data.workout.mode==='hardware'?'ERG-Steuerung freigegeben · Start erfolgt manuell':'Workout-Steuerung ausschließlich simuliert'):'Nur Anzeige · keine Widerstandssteuerung';
-  el('mode').textContent = data.simulated?'SIMULATION':'BLUETOOTH · LIVE';
+  document.querySelector('.readonly').textContent=data.workout?(data.workout.mode==='hardware'?'ERG freigegeben':'Simulierte Steuerung'):'Nur Anzeige';
+  el('mode').textContent = data.simulated?'SIMULATION':'BLUETOOTH';
   el('error').hidden=!data.error; el('error').textContent=data.error||'';
   if(data.status!=='ready') {clearReadings(data.error?'Verbindung fehlgeschlagen':'Geräte werden gesucht und verbunden …');return;}
-  el('stream').textContent='● Live-Verbindung';
+  el('stream').textContent='Live';
   renderZone(data.hr.bpm,data.hr.freshness,data.hr_zone_boundaries||[]);
   el('clock-label').textContent=data.workout?'TRAININGSZEIT':'BEOBACHTUNGSZEIT';
   const seconds=Math.floor(data.workout?data.workout.elapsed_sec:data.elapsed_sec);
@@ -111,7 +111,8 @@ function render(data) {
   for(const [id,value] of [['power',data.trainer.power_w],['cadence',data.trainer.cadence_rpm],['hr',data.hr.bpm]]) el(id).textContent=value===null?'—':Math.round(value);
   for(const role of ['trainer','hr']) {
     const source=data[role];
-    el(`${role}-state`).textContent=source.detail||states[source.connection]||source.connection;
+    el(`${role}-state`).textContent=source.connection==='CONNECTED'?'Verbunden':'Nicht verbunden';
+    el(`${role}-state`).title=source.detail||states[source.connection]||source.connection;
     el(`${role}-state`).dataset.live=source.connection==='CONNECTED';
     el(`${role}-fresh`).textContent=freshness[source.freshness]||source.freshness;
     el(`${role}-age`).textContent=source.age_sec===null?'Noch kein Messwert':`vor ${Math.floor(source.age_sec)} s`;
@@ -154,12 +155,12 @@ function renderReview(session) {
   el('review-power').textContent=`${value(summary.average_power_w,'W')} / ${value(summary.max_power_w,'W')}`;
   el('review-hr').textContent=`${value(summary.average_bpm,'bpm')} / ${value(summary.max_bpm,'bpm')}`;
   el('review-cadence').textContent=value(summary.average_cadence_rpm,'rpm');
-  el('review-quality').textContent=`Datenabdeckung während Trainingszeit: Leistung ${time(summary.coverage_power_w_sec)}, Puls ${time(summary.coverage_bpm_sec)}, Kadenz ${time(summary.coverage_cadence_rpm_sec)}. ${summary.sample_count} Messpunkte, ${summary.event_count} Ereignisse. Mittelwerte sind zeitgewichtet; Lücken und Pausen zählen nicht als Nullwerte.`;
+  el('review-quality').textContent=`Abdeckung · Leistung ${time(summary.coverage_power_w_sec)} · Puls ${time(summary.coverage_bpm_sec)} · Kadenz ${time(summary.coverage_cadence_rpm_sec)} · ${summary.sample_count} Messpunkte · ${summary.event_count} Ereignisse`;
   const canExport=session.status!=='ACTIVE'&&!session.metadata.simulated&&summary.running_sample_count>0&&[summary.max_power_w,summary.max_bpm,summary.max_cadence_rpm].some(value=>value!==null&&value!==undefined);
   el('download-tcx').hidden=!canExport;
   el('download-tcx').href=`/api/sessions/${encodeURIComponent(session.id)}/download/tcx`;
   el('download-json').href=`/api/sessions/${encodeURIComponent(session.id)}/download/json`;
-  el('review-export-info').textContent=session.metadata.simulated?'Simulationsdaten: JSON zur Prüfung verfügbar, kein TCX für Strava.':session.status==='ACTIVE'?'TCX steht nach dem Beenden bereit.':canExport?'TCX enthält gemessene Leistung, Puls und Kadenz. Distanz und Kalorien wurden nicht aufgezeichnet.':'Keine gefahrenen Messdaten für einen TCX-Export vorhanden.';
+  el('review-export-info').textContent=session.metadata.simulated?'Simulation · nur JSON':session.status==='ACTIVE'?'TCX nach Trainingsende':canExport?'TCX · Leistung, Puls, Kadenz · ohne Distanz / Kalorien':'TCX nicht verfügbar · keine gefahrenen Messdaten';
 }
 async function refreshSessions() {
   if(archiveBusy) return;

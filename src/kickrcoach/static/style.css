@@ -1,19 +1,144 @@
-:root{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#efefea;background:#10120f;font-synthesis:none;--lime:#d5f77b;--muted:#91978a;--border:#30352b}*{box-sizing:border-box}body{margin:0}header{height:88px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 max(6vw,24px)}.brand{font-size:24px;letter-spacing:-1px;font-weight:900;color:inherit;text-decoration:none}.brand span{font-weight:400;color:var(--lime);margin-left:6px}.local{font-size:11px;color:var(--muted);letter-spacing:2px}main{max-width:1320px;margin:auto;padding:52px 40px 24px}.heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px}.eyebrow{font-size:10px;letter-spacing:2px;font-weight:700;color:var(--muted);margin:0 0 12px}h1{font-size:clamp(36px,5vw,58px);letter-spacing:-2px;margin:0;font-weight:650}.dot{color:var(--lime)}.intro{color:var(--muted);font-size:14px;margin:14px 0 0}.session{text-align:right}.session span{display:block;color:var(--muted);font-size:10px;letter-spacing:1.5px}.session strong{display:block;font-size:32px;margin-top:10px;font-weight:400;font-variant-numeric:tabular-nums}.toolbar{display:flex;align-items:center;gap:16px;margin-bottom:20px;font-size:12px;color:var(--muted);flex-wrap:wrap}.badge{color:var(--lime);border:1px solid #4a5931;background:#20291a;border-radius:5px;padding:7px 10px;font-size:10px;font-weight:700;letter-spacing:1px}.readonly{margin-left:auto}.metrics{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:16px}.metric{background:#1a1e17;border:1px solid var(--border);padding:24px;border-radius:12px;min-width:0}.metric.power{background:var(--lime);border-color:var(--lime);color:#1d2914}.metric-top,.metric-bottom{display:flex;justify-content:space-between;align-items:center;gap:8px}.metric h2{font-size:14px;font-weight:500;margin:0}.metric-top>span{font-size:9px;letter-spacing:1px;opacity:.6}.metric-top>.heart{font-size:24px;color:#f7a18c;opacity:1;line-height:14px}.reading{display:flex;align-items:baseline;gap:10px;padding:26px 0 20px}.reading strong{font-size:clamp(48px,7vw,88px);font-weight:550;letter-spacing:-4px;line-height:1.15;font-variant-numeric:tabular-nums}.reading>span{font-size:20px;opacity:.6}.metric-bottom{font-size:10px;color:var(--muted);min-height:16px}.power .metric-bottom{color:#465b30}.panel{margin-top:24px;border:1px solid var(--border);border-radius:12px;padding:26px;background:#161914}.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.panel-heading .eyebrow{margin-bottom:8px}.panel h2{font-size:20px;font-weight:500;letter-spacing:-.5px;margin:0}.subtle{font-size:11px;color:var(--muted)}.charts{margin-top:26px}.chart-row{display:grid;grid-template-columns:140px 1fr;align-items:center;gap:16px}.chart-label{font-size:11px;display:flex;gap:8px;align-items:center}.chart-label>span:last-child{margin-left:auto;color:var(--muted);font-size:9px}.key{height:6px;width:6px;border-radius:50%;flex-shrink:0}.lime{background:var(--lime)}.blue{background:#8bbfde}.coral{background:#f7a18c}svg{width:100%;height:72px;overflow:visible;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(33.333% - 1px),#2a2e2544 calc(33.333% - 1px),#2a2e2544 33.333%);border-bottom:1px solid #2a2e25}svg path{fill:none;stroke:var(--lime);stroke-width:2;vector-effect:non-scaling-stroke;stroke-linejoin:round}#cadence-chart path{stroke:#8bbfde}#hr-chart path{stroke:#f7a18c}.axis{display:flex;justify-content:space-between;margin:12px 0 0 156px;font-size:9px;color:var(--muted)}.connections{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px}.connections>div{display:flex;align-items:center;gap:14px;border:1px solid var(--border);border-radius:10px;padding:18px 22px}.connection-icon{border:1px solid var(--border);border-radius:8px;width:34px;height:34px;display:grid;place-items:center;color:var(--lime)}.connections h2{font-size:12px;font-weight:500;margin:0}.connections p{font-size:10px;color:var(--muted);margin:6px 0 0}.state{font-size:10px;color:var(--muted);margin-left:auto}.state[data-live=true]{color:var(--lime)}footer{display:flex;justify-content:space-between;gap:16px;color:#747c6b;font-size:9px;line-height:1.8;margin-top:32px;letter-spacing:.3px}.version{color:#4f5848}.error{background:#3b261f;color:#ffc0a7;border:1px solid #744f3b;border-radius:8px;padding:14px;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){header{height:68px;padding:0 20px}main{padding:30px 18px 20px}.heading{align-items:flex-start}.session strong{font-size:24px}.session span{font-size:8px}.intro{font-size:12px;max-width:210px;line-height:1.6}.metrics{grid-template-columns:1fr 1fr;gap:12px}.power{grid-column:1/-1}.metric{padding:20px}.power .reading strong{font-size:88px}.reading strong{font-size:52px;letter-spacing:-2px}.reading>span{font-size:14px}.metric-top>span:not(.heart){display:none}.metric-bottom{flex-wrap:wrap}.readonly{width:100%;margin:0}.toolbar{gap:10px}.panel{padding:20px 16px}.panel-heading{align-items:flex-start}.panel-heading>.subtle{max-width:70px;text-align:right;line-height:1.5}.panel h2{font-size:17px}.chart-row{grid-template-columns:80px 1fr;gap:10px}.chart-label{flex-wrap:wrap;gap:5px;font-size:10px}.chart-label>span:last-child{width:100%;padding-left:11px}.axis{margin-left:90px}.connections{grid-template-columns:1fr;gap:12px}footer{flex-direction:column;gap:4px}}
-/* The zone is the primary HR reading; BPM remains secondary. */
-.metrics{grid-template-columns:1fr .8fr 1.3fr}.zone-reading{padding:22px 0 14px;display:flex;flex-direction:column;gap:6px;min-height:122px}.zone-reading strong{font-size:54px;line-height:1.1;letter-spacing:-2px;font-weight:600;color:var(--zone-color,#efefea)}.zone-reading>span{font-size:12px;color:var(--muted)}.zone-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}.zone-strip>span{text-align:center;font-size:10px;border-bottom:5px solid var(--segment);padding:8px 0;color:var(--muted);opacity:.45}.zone-strip [data-zone="1"]{--segment:#8bbfde}.zone-strip [data-zone="2"]{--segment:#d5f77b}.zone-strip [data-zone="3"]{--segment:#f4d16d}.zone-strip [data-zone="4"]{--segment:#f6a16c}.zone-strip [data-zone="5"]{--segment:#ee8296}.zone-strip>span[aria-current=true]{background:#ffffff0b;border-radius:4px 4px 0 0;color:var(--segment);font-weight:800;opacity:1}.hr-secondary{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;color:var(--muted);font-size:10px;margin:16px 0 4px}.hr-secondary>span:first-child{margin-right:auto;font-size:12px}.hr-secondary strong{font-size:24px;color:var(--zone-color,#efefea);font-variant-numeric:tabular-nums}.zone-settings{margin-top:18px;border-top:1px solid var(--border);padding-top:12px;font-size:11px}.zone-settings summary{cursor:pointer;color:var(--muted);padding:4px 0}.zone-settings p{line-height:1.7;color:var(--muted)}input,select,button{font:inherit}input,select{background:#10120f;border:1px solid #47513c;color:#efefea;border-radius:6px;padding:10px;width:100%}button{border:1px solid #47513c;background:#242d1d;border-radius:6px;color:#e7eddf;padding:11px 14px;cursor:pointer;font-size:12px}button:hover:not(:disabled){border-color:var(--lime)}button:disabled,select:disabled{opacity:.35;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--lime);outline-offset:4px}.workout-panel .panel-heading{flex-wrap:wrap}.workout-select{display:flex;align-items:center;gap:12px;margin-top:22px;font-size:12px}.workout-select select{max-width:340px}.workout-select button{white-space:nowrap}.workout-stats{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:24px;margin:26px 0}.workout-stats>div{display:flex;flex-direction:column;gap:10px;min-width:0}.workout-stats span{font-size:9px;letter-spacing:1px;color:var(--muted)}.workout-stats strong{font-size:26px;font-weight:500}.workout-stats small{font-size:11px;color:var(--muted)}.workout-controls{display:flex;flex-wrap:wrap;gap:10px}#start{background:var(--lime);color:#1d2914;font-weight:700}#stop{background:#6e3029;border-color:#a05a4d;color:#fff;margin-left:auto;min-width:100px;font-weight:800}
-@media(max-width:900px){.metrics{grid-template-columns:1fr 1fr}.hr-zone-card{grid-column:1/-1}.zone-reading strong{font-size:64px}}@media(max-width:700px){.metrics{grid-template-columns:1fr 1fr}.power{grid-column:auto}.power .reading strong{font-size:52px}.hr-zone-card{grid-row:1;grid-column:1/-1}.hr-zone-card .metric-top>.heart{display:inline}.zone-reading{min-height:112px}.workout-stats{grid-template-columns:1fr 1fr;gap:22px}.workout-stats>div:nth-child(2){grid-row:2;grid-column:1/-1}.workout-select{flex-wrap:wrap}.workout-select label{width:100%}.workout-select select{flex:1;min-width:160px}.workout-stats strong{font-size:24px}.workout-panel .badge{font-size:8px}#stop{margin-left:0;flex:1}.workout-controls button{min-height:44px}}
-
-.zone-settings ol{padding-left:20px;color:var(--muted);line-height:1.9}.zone-settings li{padding-left:4px}
-
-.session-list {display:grid;gap:.6rem;max-height:16rem;overflow:auto;margin:1rem 0 1.5rem}
-.session-list button {text-align:left;white-space:normal;line-height:1.5}
-.session-list button[aria-pressed="true"] {border-color:var(--lime,#d5f77b)}
-.archive-downloads {display:flex;flex-wrap:wrap;gap:1rem;margin-top:1.5rem}
-.download {display:inline-block;padding:.8rem 1rem;border:1px solid #5b6550;border-radius:.5rem;color:#d5f77b;text-decoration:none}
-.download[hidden] {display:none}
-.feedback-form {display:grid;gap:.65rem;margin-top:1.5rem;max-width:40rem}
-.feedback-form input,.feedback-form textarea {font:inherit;color:inherit;background:#1e211e;border:1px solid #5b6550;border-radius:.5rem;padding:.7rem;max-width:100%;box-sizing:border-box}
-.review-stats {grid-template-columns:repeat(4,minmax(0,1fr))}
-.review-stats strong {font-size:22px;overflow-wrap:anywhere}
-.download:focus-visible,.feedback-form textarea:focus-visible {outline:2px solid var(--lime);outline-offset:4px}
-@media(max-width:700px){.review-stats{grid-template-columns:1fr 1fr}.review-stats>div:nth-child(2){grid-row:auto;grid-column:auto}}
+:root {
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #efefea;
+  background: #10120f;
+  font-synthesis: none;
+  --lime: #d5f77b;
+  --muted: #a0a795;
+  --border: #30352b;
+}
+* {box-sizing: border-box}
+body {margin: 0}
+[hidden] {display: none !important}
+.sr-only {position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0}
+.app-header {position: sticky; top: 0; z-index: 10; min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 10px max(24px, calc((100vw - 1312px) / 2)); border-bottom: 1px solid var(--border); background: #10120ff5}
+.brand {font-size: 20px; letter-spacing: -1px; font-weight: 900; color: inherit; text-decoration: none; white-space: nowrap}
+.brand span {font-weight: 400; color: var(--lime); margin-left: 5px}
+.device-status {display: flex; align-items: center; gap: 24px; font-size: 12px}
+.device {display: flex; align-items: center; gap: 8px}
+.device-name {color: #d0d6c9; font-weight: 500}
+.state {display: inline-flex; align-items: center; gap: 6px; color: var(--muted)}
+.state::before {content: ""; width: 6px; height: 6px; border-radius: 50%; background: #828879; flex-shrink: 0}
+.state[data-live=true]::before {background: var(--lime)}
+main {max-width: 1360px; margin: auto; padding: 16px 24px 24px}
+.telemetry-bar {display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 16px}
+.toolbar {display: flex; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 11px}
+.badge {display: inline-block; color: var(--lime); border: 1px solid #4a5931; background: #20291a; border-radius: 5px; padding: 6px 8px; font-size: 10px; font-weight: 700; letter-spacing: .7px}
+.session {display: flex; align-items: center; gap: 12px; flex-shrink: 0; font-variant-numeric: tabular-nums}
+.session span {font-size: 10px; letter-spacing: 1px; color: var(--muted)}
+.session strong {font-size: 28px; font-weight: 500}
+.metrics {display: grid; grid-template-columns: 1fr .8fr 1.3fr; gap: 16px}
+.metric {background: #1a1e17; border: 1px solid var(--border); padding: 20px; border-radius: 12px; min-width: 0}
+.metric.power {background: var(--lime); border-color: var(--lime); color: #1d2914}
+.metric-top, .metric-bottom {display: flex; align-items: center; justify-content: space-between; gap: 8px}
+.metric h2 {font-size: 14px; font-weight: 500; margin: 0}
+.metric-top > span {font-size: 9px; letter-spacing: 1px; opacity: .6}
+.metric-top > .heart {font-size: 24px; color: #f7a18c; opacity: 1; line-height: 14px}
+.reading {display: flex; align-items: baseline; gap: 10px; padding: 24px 0 18px}
+.reading strong {font-size: clamp(56px, 6.5vw, 88px); font-weight: 550; letter-spacing: -3px; line-height: 1.1; font-variant-numeric: tabular-nums}
+.reading > span {font-size: 20px; opacity: .6}
+.metric-bottom {font-size: 11px; color: var(--muted); min-height: 16px; flex-wrap: wrap}
+.power .metric-bottom {color: #465b30}
+.zone-reading {padding: 16px 0 10px; display: flex; flex-direction: column; gap: 6px}
+.zone-reading strong {font-size: 52px; line-height: 1.1; letter-spacing: -2px; font-weight: 600; color: var(--zone-color, #efefea)}
+.zone-reading > span {font-size: 12px; color: var(--muted)}
+.zone-strip {display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px}
+.zone-strip > span {text-align: center; font-size: 10px; border-bottom: 5px solid var(--segment); padding: 6px 0; color: var(--muted); opacity: .45}
+.zone-strip [data-zone="1"] {--segment: #8bbfde}
+.zone-strip [data-zone="2"] {--segment: #d5f77b}
+.zone-strip [data-zone="3"] {--segment: #f4d16d}
+.zone-strip [data-zone="4"] {--segment: #f6a16c}
+.zone-strip [data-zone="5"] {--segment: #ee8296}
+.zone-strip > span[aria-current=true] {background: #ffffff0b; border-radius: 4px 4px 0 0; color: var(--segment); font-weight: 800; opacity: 1}
+.hr-secondary {display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; color: var(--muted); font-size: 11px; margin-top: 10px}
+.hr-secondary > span:first-child {margin-right: auto; font-size: 12px}
+.hr-secondary strong {font-size: 24px; color: var(--zone-color, #efefea); font-variant-numeric: tabular-nums}
+.zone-settings {margin-top: 8px; border-top: 1px solid var(--border); font-size: 11px}
+.zone-settings summary {cursor: pointer; color: var(--muted); padding: 12px 0; min-height: 44px; display: list-item}
+.zone-settings ol {padding-left: 20px; color: var(--muted); line-height: 1.9}
+.zone-settings li {padding-left: 4px}
+.training-grid {display: grid; gap: 16px; margin-top: 16px; align-items: start}
+.panel {border: 1px solid var(--border); border-radius: 12px; padding: 20px; background: #161914; min-width: 0}
+.panel-heading {display: flex; align-items: center; justify-content: space-between; gap: 12px}
+.panel h2 {font-size: 18px; font-weight: 500; letter-spacing: -.3px; margin: 0}
+h3 {font-size: 16px; font-weight: 500}
+.eyebrow {font-size: 10px; letter-spacing: 1px; font-weight: 700; color: var(--muted); margin: 0 0 6px}
+.subtle {font-size: 12px; line-height: 1.5; color: var(--muted)}
+.error {background: #3b261f; color: #ffc0a7; border: 1px solid #744f3b; border-radius: 8px; padding: 14px; font-size: 13px; line-height: 1.5}
+input, select, button, textarea {font: inherit}
+input, select, textarea {background: #10120f; border: 1px solid #47513c; color: #efefea; border-radius: 6px; padding: 10px; width: 100%; min-height: 44px}
+button {min-height: 44px; border: 1px solid #47513c; background: #242d1d; border-radius: 6px; color: #e7eddf; padding: 10px 14px; cursor: pointer; font-size: 13px; touch-action: manipulation}
+button:hover:not(:disabled) {border-color: var(--lime)}
+button:disabled, select:disabled {opacity: .35; cursor: default}
+:where(button, input, select, textarea, summary, a):focus-visible {outline: 2px solid var(--lime); outline-offset: 4px}
+.workout-panel .panel-heading {flex-wrap: wrap}
+.workout-select {display: flex; align-items: center; gap: 10px; margin-top: 16px; font-size: 12px}
+.workout-select select {flex: 1; min-width: 0}
+.workout-select button {white-space: nowrap}
+.workout-stats {display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 16px; margin: 20px 0; font-variant-numeric: tabular-nums}
+.workout-stats > div {display: flex; flex-direction: column; gap: 8px; min-width: 0}
+.workout-stats span {font-size: 10px; letter-spacing: .6px; color: var(--muted)}
+.workout-stats strong {font-size: 26px; font-weight: 500; overflow-wrap: anywhere}
+.workout-stats small {font-size: 11px; line-height: 1.5; color: var(--muted)}
+.workout-controls {display: flex; flex-wrap: wrap; gap: 8px}
+#start {background: var(--lime); color: #1d2914; font-weight: 700}
+#stop {background: #6e3029; border-color: #a05a4d; color: #fff; margin-left: auto; min-width: 100px; font-weight: 800}
+.charts {margin-top: 14px}
+.chart-row {display: grid; grid-template-columns: 94px minmax(0, 1fr); align-items: center; gap: 10px}
+.chart-label {font-size: 11px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap}
+.chart-label > span:last-child {width: 100%; padding-left: 12px; color: var(--muted); font-size: 10px}
+.key {height: 6px; width: 6px; border-radius: 50%; flex-shrink: 0}
+.lime {background: var(--lime)}
+.blue {background: #8bbfde}
+.coral {background: #f7a18c}
+svg {display: block; width: 100%; height: 64px; overflow: visible; background: repeating-linear-gradient(90deg, transparent 0, transparent calc(33.333% - 1px), #2a2e2544 calc(33.333% - 1px), #2a2e2544 33.333%); border-bottom: 1px solid #2a2e25}
+svg path {fill: none; stroke: var(--lime); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round}
+#cadence-chart path {stroke: #8bbfde}
+#hr-chart path {stroke: #f7a18c}
+.axis {display: flex; justify-content: space-between; margin: 10px 0 0 104px; font-size: 10px; color: var(--muted)}
+.archive-panel {margin-top: 16px}
+.session-list {display: grid; gap: .6rem; max-height: 16rem; overflow: auto; margin: 16px 0}
+.session-list button {text-align: left; white-space: normal; line-height: 1.5}
+.session-list button[aria-pressed="true"] {border-color: var(--lime)}
+.archive-downloads {display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px}
+.download {display: inline-flex; align-items: center; min-height: 44px; padding: 10px 14px; border: 1px solid #5b6550; border-radius: 6px; color: var(--lime); text-decoration: none; font-size: 14px}
+.feedback-form {display: grid; gap: 10px; margin-top: 20px; max-width: 40rem; font-size: 14px}
+.review-stats {grid-template-columns: repeat(4, minmax(0, 1fr))}
+.review-stats strong {font-size: 22px}
+@media (min-width: 1000px) {
+  .training-grid {grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr)}
+  /* A read-only dashboard uses the full width for its history. */
+  .training-grid:has(.workout-panel[hidden]) {grid-template-columns: minmax(0, 1fr)}
+}
+@media (max-width: 759px) {
+  .app-header {padding: 10px 16px; gap: 12px; flex-wrap: wrap}
+  .brand {font-size: 18px}
+  .device-status {gap: 12px; font-size: 11px; flex-wrap: wrap}
+  .device {gap: 5px}
+  main {padding: 12px 16px 20px}
+  .telemetry-bar {align-items: flex-start; gap: 12px}
+  .toolbar {gap: 8px}
+  .session {flex-direction: column; align-items: flex-end; gap: 4px}
+  .session strong {font-size: 24px}
+  .session span {font-size: 9px}
+  .metrics {grid-template-columns: 1fr 1fr; gap: 12px}
+  .metric {padding: 16px}
+  .hr-zone-card {grid-row: 1; grid-column: 1 / -1}
+  .zone-reading strong {font-size: 56px}
+  .reading strong {font-size: 52px; letter-spacing: -2px}
+  .reading > span {font-size: 14px}
+  .panel {padding: 16px}
+  .panel h2 {font-size: 17px}
+  .workout-select {flex-wrap: wrap}
+  .workout-select label {width: 100%}
+  .workout-stats {grid-template-columns: 1fr 1fr}
+  .workout-stats > div:nth-child(2) {grid-row: 2; grid-column: 1 / -1}
+  .workout-stats strong {font-size: 24px}
+  .workout-panel .badge {font-size: 9px}
+  #stop {margin-left: 0; flex: 1}
+  .review-stats {grid-template-columns: 1fr 1fr}
+  .review-stats > div:nth-child(2) {grid-row: auto; grid-column: auto}
+}
+@media (prefers-reduced-motion: no-preference) {
+  button, .download {transition: border-color .15s}
+}
