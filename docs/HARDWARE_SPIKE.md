@@ -107,3 +107,23 @@ These results are software evidence only, not real-hardware acceptance.
 On 2026-10-20 the user explicitly requested M1 despite this pending hardware gate.
 M1 software work is documented separately in `M1_FOUNDATION.md`. The M0 results
 above remain unchanged: no real-hardware acceptance was performed or inferred.
+
+## User-reported Mac telemetry — 2026-10-20
+
+The user confirmed the hardware probe works after supplying distinct trainer and
+HR identifiers, and subsequently confirmed heart rate, power and cadence appear
+in the local web dashboard. This establishes user-observed concurrent telemetry
+through the real FTMS/HRS adapters into the browser. No identifiers or raw
+physiological recordings were collected for this report.
+
+This is user-reported evidence, not an agent-observed hardware capture. Exact
+OS/Python versions, GATT properties, power range, notification intervals,
+>=10-minute stability, FTMS control responses, physical target/Stop behavior and
+hardware Ctrl+C/reconnect outcomes remain unverified. The original table records
+the implementation-host spike; this update supersedes its telemetry-only pending
+entries without implying the remaining acceptance criteria passed. Issue #1
+remains open and M0 remains unaccepted.
+
+M0/M1 and the read-only web preview are being integrated as software increments
+at the user's request. Integration does not waive the hardware gate for actual
+workout/control acceptance.

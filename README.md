@@ -1,4 +1,43 @@
-# KICKR Coach — M1 adapter foundation
+# KICKR Coach — local telemetry dashboard
+
+## Webansicht starten
+
+Die erste Webversion zeigt Leistung, Trittfrequenz, Puls, Messwertalter,
+Geräteverbindungen und einen flüchtigen 3-Minuten-Verlauf. Sie ist ausschließlich
+lesend und sendet auch beim Beenden keine Trainer-Steuerbefehle.
+
+```sh
+uv sync --locked --extra dev
+# Mit echten Geräten; vorhandene trainer_id UND hr_id in config.toml verwenden:
+uv run --locked kickrcoach-web --hardware --config config.toml
+```
+
+Dann **http://127.0.0.1:8000** öffnen. Den bisherigen CLI-Probe vorher beenden;
+Bluetooth einschalten, HeartCast-Broadcast starten und andere Trainer-Apps schließen.
+Die Bluetooth-Berechtigung gilt weiterhin für das ausführende Terminal.
+Mit **Ctrl+C im Terminal** werden beide Geräte getrennt und der Server beendet.
+Bei belegtem Port z. B. `--port 8001` ergänzen.
+
+Ohne Hardware-Flag startet eine deutlich markierte Simulation:
+
+```sh
+uv run --locked kickrcoach-web
+```
+
+Ein Serverprozess besitzt die Geräteverbindungen; mehrere Browser oder ein
+Neuladen der Seite teilen sich dieselbe Erfassung. Bei Sensorverlust gibt es
+keinen automatischen BLE-Reconnect: Geräte/Broadcast prüfen, Server mit Ctrl+C
+beenden und neu starten. Der Browser verbindet seinen Datenstrom automatisch neu.
+Alte Messwerte werden ausgeblendet; 0 W bzw. 0 rpm bleiben gültige Messwerte.
+
+Der Server bindet ausschließlich an `127.0.0.1`, nicht ans LAN. Keine externen
+Schriften, CDNs, Cloud-Aufrufe oder dauerhafte Speicherung. Der vorgezogene
+UI-Ausschnitt schließt M0/M3 nicht ab. Details und offene Abnahmen:
+[docs/WEB_DASHBOARD.md](docs/WEB_DASHBOARD.md).
+
+---
+
+## M0/M1 foundation
 
 The original M0 command implements the diagnostic software for Issue #1. It scans/probes standard
 Bluetooth FTMS trainers and HRS heart-rate sources, including the intended

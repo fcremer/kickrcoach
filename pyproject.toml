@@ -7,14 +7,23 @@ name = "kickrcoach"
 version = "0.2.0"
 description = "Local FTMS/HRS adapters, diagnostic probe and deterministic simulators"
 requires-python = ">=3.12"
-dependencies = ["bleak==3.0.2"]
+dependencies = [
+    "bleak==3.0.2",
+    "fastapi==0.119.0",
+    "uvicorn==0.37.0",
+    "websockets==15.0.1",
+]
 
 [project.optional-dependencies]
-dev = ["pytest==8.4.2"]
+dev = [
+    "httpx==0.28.1",
+    "pytest==8.4.2",
+]
 
 [project.scripts]
 kickrcoach = "kickrcoach.cli:main"
 kickrcoach-adapters = "kickrcoach.demo:main"
+kickrcoach-web = "kickrcoach.web:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
