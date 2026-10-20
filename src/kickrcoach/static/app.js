@@ -66,7 +66,7 @@ async function command(action) {
     if(!response.ok) throw new Error(typeof result.detail==='string'?result.detail:'Befehl konnte nicht ausgeführt werden.');
     if(latest) {latest.workout=result;renderWorkout(result);}
   } catch(error) {
-    el('workout-error').textContent=error.message||'Server nicht erreichbar.'; el('workout-error').hidden=false;
+    el('workout-error').textContent=action==='stop'?'STOP konnte nicht bestätigt werden. Treten beenden und Trainer entlasten.':(error.message||'Server nicht erreichbar.'); el('workout-error').hidden=false;
   } finally {busy=false;if(latest) renderWorkout(latest.workout,lastMessage>0&&performance.now()-lastMessage<3500);}
 }
 for(const button of document.querySelectorAll('[data-action]')) button.addEventListener('click',()=>command(button.dataset.action));
