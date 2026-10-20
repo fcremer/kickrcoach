@@ -155,3 +155,25 @@ test('recording errors stay visible alongside trainer notices',()=>{
   assert.equal(ui.get('workout-notice').hidden,false);
   assert.match(ui.get('workout-notice').textContent,/Aufzeichnung/);
 });
+
+
+test('compact device status distinguishes independent connections and unknown server state',()=>{
+  const ui=dashboard(),data=payload();
+  data.trainer.detail='Verbunden';
+  data.hr.connection='CONNECTING';data.hr.detail='Wird gesucht …';
+  ui.render(data);
+  assert.equal(ui.get('trainer-state').textContent,'Verbunden');
+  assert.equal(ui.get('trainer-state').dataset.live,true);
+  assert.equal(ui.get('hr-state').textContent,'Nicht verbunden');
+  assert.equal(ui.get('hr-state').dataset.live,false);
+  assert.equal(ui.get('hr-state').title,'Wird gesucht …');
+  data.trainer.connection='DISCONNECTED';data.hr.connection='CONNECTED';
+  ui.render(data);
+  assert.equal(ui.get('trainer-state').textContent,'Nicht verbunden');
+  assert.equal(ui.get('hr-state').textContent,'Verbunden');
+  ui.clearReadings('Serverdaten fehlen');
+  for(const role of ['trainer','hr']) {
+    assert.equal(ui.get(`${role}-state`).textContent,'Unbekannt');
+    assert.equal(ui.get(`${role}-state`).dataset.live,'false');
+  }
+});
