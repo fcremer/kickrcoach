@@ -226,3 +226,8 @@ config.local.toml
 
 # Local BLE identifiers
 config.toml
+
+# Local ride archives / exports (physiological data)
+*.sqlite3
+*.sqlite3-*
+*.tcx

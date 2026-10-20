@@ -37,7 +37,8 @@ class HardwareTelemetry(Telemetry):
         trainer = FtmsTrainer(trainer_factory, command_timeout_sec=config.command_timeout_sec,
                               safety=SafetyController(config.training_maximum_w))
         hr = BleHeartRateSource(hr_factory, stale_sec=config.stale_sec, lost_sec=config.lost_sec)
-        session = WebWorkout(trainer=trainer,hr=hr,hardware=True,maximum_w=config.training_maximum_w) if control_enabled else None
+        session = WebWorkout(trainer=trainer,hr=hr,hardware=True,maximum_w=config.training_maximum_w,
+                             stale_sec=config.stale_sec,lost_sec=config.lost_sec) if control_enabled else None
         super().__init__(trainer, hr, simulated=False, stale_sec=config.stale_sec, lost_sec=config.lost_sec,workout=session)
 
     def snapshot(self) -> dict:

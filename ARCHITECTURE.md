@@ -159,3 +159,18 @@ The GUI's training_maximum_w is independent of M0's maximum_w. Both still pass
 through SafetyController and discovered capabilities; measured power is not a
 target request. Raising an operational training ceiling does not infer FTP or
 change the M0 diagnostic ceiling. See docs/WEB_DASHBOARD.md for defaults and tests.
+
+
+### AD-012 — Durable sampled sessions and user-directed export
+
+A workout owner records engine events and approximately 1 Hz snapshots to local
+SQLite independently of UI connections. Worker-thread transactions are joined
+on cancellation; trainer STOP precedes persistence waits. A single archive
+lease guards restart recovery. A prior active session becomes interrupted,
+never resumed. Anchored UTC plus monotonic offsets preserve point order across
+wall-clock changes; original sensor receipt times and quality remain explicit.
+
+Review metrics exclude paused/stale/missing values and expose time coverage.
+TCX is the portable ride export; versioned JSON preserves the richer local
+context for user-directed AI review. No automatic cloud transmission or
+real-time AI control is introduced. See docs/SESSION_RECORDING.md.

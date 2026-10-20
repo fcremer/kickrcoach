@@ -107,6 +107,12 @@ Acceptance:
 - events persist immediately
 - session survives UI reconnect without losing workout state
 
+M3/M4 recording slice (2026-10-20): SQLite samples/events, durable archive,
+post-ride summary, RPE/cooling/notes and TCX/full JSON downloads are implemented
+with deterministic failure-path tests. Readiness input and remaining M4 analytics
+are not claimed complete. Export upload and native visual acceptance are still
+unverified. See docs/SESSION_RECORDING.md for exact scope and limitations.
+
 ## M4 — Export + analysis
 
 Goal: trustworthy session review.

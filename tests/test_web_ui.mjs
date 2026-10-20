@@ -45,7 +45,7 @@ function dashboard() {
     location:{protocol:'http:',host:'localhost:8000'},performance:{now:()=>100},
     WebSocket:class {},setInterval:()=>{},setTimeout:()=>{},console,fetch:async()=>{throw new Error('Failed to fetch');}});
   const source=readFileSync(new URL('../src/kickrcoach/static/app.js',import.meta.url),'utf8').replace(/^import[^\n]+\n/,'');
-  vm.runInContext(source+'\nglobalThis.testing={render,clearReadings,command};',context);
+  vm.runInContext(source+'\nglobalThis.testing={render,clearReadings,command,renderReview};',context);
   return {get,...context.testing};
 }
 function payload() {
@@ -123,4 +123,35 @@ test('waiting for pedaling shows an armed start with only STOP available',()=>{
   assert.equal(ui.get('increase').disabled,true);
   assert.equal(ui.get('pause').disabled,true);
   assert.match(ui.get('planned').textContent,/Limit: 300 W/);
+});
+
+
+test('archive review reports missing values and gates TCX for simulation and active sessions',()=>{
+  const ui=dashboard();
+  const session={id:'fixture',started_at:'2026-01-01T00:00:00Z',status:'COMPLETED',
+    metadata:{workout:{name:'My ride'},simulated:false,rpe:5,cooling:true,notes:'Good'},
+    summary:{active_duration_sec:120,average_power_w:100,max_power_w:150,
+      average_bpm:null,max_bpm:null,average_cadence_rpm:80,max_cadence_rpm:85,
+      coverage_power_w_sec:110,coverage_bpm_sec:0,coverage_cadence_rpm_sec:110,
+      sample_count:120,event_count:6,running_sample_count:110}};
+  ui.renderReview(session);
+  assert.equal(ui.get('review-duration').textContent,'02:00');
+  assert.equal(ui.get('review-power').textContent,'100 W / 150 W');
+  assert.equal(ui.get('review-hr').textContent,'— / —');
+  assert.equal(ui.get('download-tcx').hidden,false);
+  assert.equal(ui.get('download-json').href,'/api/sessions/fixture/download/json');
+  assert.equal(ui.get('feedback-rpe').value,5);
+  session.metadata.simulated=true;ui.renderReview(session);
+  assert.equal(ui.get('download-tcx').hidden,true);
+  session.metadata.simulated=false;session.status='ACTIVE';ui.renderReview(session);
+  assert.equal(ui.get('download-tcx').hidden,true);
+  assert.equal(ui.get('session-feedback').hidden,true);
+});
+
+test('recording errors stay visible alongside trainer notices',()=>{
+  const ui=dashboard(),data=payload();
+  data.workout.recording_error='Aufzeichnung fehlgeschlagen';
+  ui.render(data);
+  assert.equal(ui.get('workout-notice').hidden,false);
+  assert.match(ui.get('workout-notice').textContent,/Aufzeichnung/);
 });
