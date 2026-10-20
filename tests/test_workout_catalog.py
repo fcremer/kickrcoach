@@ -96,3 +96,59 @@ def test_web_api_loads_local_directory_and_exposes_preview(tmp_path):
             assert selected.json()['target_w'] is None
             assert selected.json()['preview'][1]['target_w']==130
             assert selected.json()['workout_notes'].startswith('Text only')
+
+
+def test_offline_selection_still_checks_discovered_power_range_before_start(tmp_path):
+    from dataclasses import replace
+    from kickrcoach.protocol import PowerRange
+    write_workout(tmp_path/'ride.yaml')
+    async def run():
+        clock=ManualClock()
+        trainer=SimulatedTrainer(clock=clock,safety=SafetyController(300))
+        hr=SimulatedHeartRateSource(clock=clock)
+        session=WebWorkout(trainer=trainer,hr=hr,hardware=True,workouts_dir=tmp_path)
+        try:
+            await session.command('select','file:ride.yaml')
+            assert session.engine.state=='IDLE'
+            await trainer.connect()
+            original=trainer.capabilities
+            async def limited():
+                return replace(await original(),power_range=PowerRange(0,100,1))
+            trainer.capabilities=limited
+            await session.step()
+            assert session.engine.state=='ABORTED'
+            assert session.snapshot()['can_start'] is False
+            assert session.snapshot()['can_select'] is True
+            assert session.notice and 'nicht bereit' in session.notice
+            assert trainer.transport.writes==[]
+        finally:
+            await session.close()
+    asyncio.run(run())
+
+
+def test_offline_selection_works_through_api_without_creating_a_ride(tmp_path):
+    from fastapi.testclient import TestClient
+    from kickrcoach.web import create_app
+    from kickrcoach.telemetry import Telemetry
+    write_workout(tmp_path/'ride.yaml')
+    trainer,hr=SimulatedTrainer(),SimulatedHeartRateSource()
+    session=WebWorkout(trainer=trainer,hr=hr,hardware=True,workouts_dir=tmp_path)
+    service=Telemetry(trainer,hr,simulated=False,workout=session)
+    async def collect():
+        try:
+            await asyncio.Event().wait()
+        finally:
+            await session.close()
+    service.collect=collect
+    headers={'origin':'http://testserver'}
+    with TestClient(create_app(telemetry=service,enable_control=True)) as client:
+        selected=client.post('/api/workout',json={'action':'select','selected':'file:ride.yaml'},headers=headers)
+        assert selected.status_code==200
+        assert selected.json()['selected']=='file:ride.yaml'
+        assert selected.json()['state']=='IDLE'
+        assert selected.json()['can_start'] is False
+        assert selected.json()['can_select'] is True
+        assert selected.json()['preview'][1]['target_w']==130
+        assert client.get('/api/sessions').json()==[]
+        assert client.post('/api/workout',json={'action':'start'},headers=headers).status_code==409
+        assert trainer.transport is None

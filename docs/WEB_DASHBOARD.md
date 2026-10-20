@@ -202,7 +202,8 @@ latched as a visible warning and error log, including on server shutdown; local
 ABORTED is never presented as confirmed physical release. Starting another
 session does not erase that warning. Idle connection supervision resumes only
 when the engine is terminal, and an uncertain adapter must reconnect before a
-new workout can be selected.
+new workout can be prepared/started (local selection is now independent of
+connection state; see the offline-selection update below).
 
 Automated hardware-path tests use fixed fake advertisements and MemoryTransport,
 not physical devices. They verify no writes before Start, actual FTMS command
@@ -327,3 +328,26 @@ and API tests cover selection, previews/notes and actual block transitions.
 The user's local workout was separately run to completion with a fake clock
 and simulated adapters; no real trainer commands or physiological acceptance
 are claimed.
+
+
+## Offline workout selection
+
+GUI workout selection and preview are local and available while the hardware
+engine is IDLE, READY or terminal, even when the KICKR is disconnected or still
+being discovered. Selecting never acquires control, writes a trainer command or
+starts a recording. The chosen immutable workout remains selected when the
+trainer arrives and across an idle disconnect/reconnect. The UI shows “Warte
+auf KICKR” while pending and keeps START disabled.
+
+Preparation is deferred until a connected READONLY trainer is available, and
+still checks every target against discovered capabilities. Failed preparation
+is visible, cannot start, and permits choosing another definition. Unsafe or
+uncertain control ownership never becomes a shortcut to starting. Existing
+stop warnings stay latched. During WAITING/RUNNING/PAUSED, selection stays
+blocked; interrupted active training still uses the established explicit-resume
+recovery path. A lost server connection also disables selection.
+
+Tests exercise selection before either device connects, HR-first arrival,
+selection retention and change during an idle reconnect, zero FTMS writes,
+capability rejection on later connection, an offline HTTP selection with no
+ride creation, and UI gating. All hardware interactions use memory transports.

@@ -55,7 +55,7 @@ function renderWorkout(workout, online=true) {
   el('start').textContent=hardware?'Training am KICKR starten':'Workout starten';
   el('workout-notice').hidden=!(workout.notice||workout.recording_error);
   el('workout-notice').textContent=[workout.notice,workout.recording_error].filter(Boolean).join(' ');
-  el('workout-state').textContent=workoutStates[state]||state;
+  el('workout-state').textContent=state==='IDLE'&&hardware?'Warte auf KICKR':workoutStates[state]||state;
   el('target').textContent=workout.target_w===null?'—':`${workout.target_w} W`;
   el('planned').textContent=workout.planned_target_w===null?'Noch kein Ziel bestätigt':`Blockvorgabe: ${workout.planned_target_w} W${workout.maximum_w ? ` · Limit: ${workout.maximum_w} W` : ''}`;
   el('block').textContent=workout.block;
@@ -69,7 +69,7 @@ function renderWorkout(workout, online=true) {
     for(const choice of workout.choices) {const option=document.createElement('option');option.value=choice.id;option.textContent=choice.name;select.append(option);}
   }
   if(select.dataset.selected!==workout.selected) {select.value=workout.selected;select.dataset.selected=workout.selected;}
-  const canSelect=['READY','ABORTED','COMPLETED'].includes(state)&&online&&!busy;
+  const canSelect=(workout.can_select??['IDLE','READY','ABORTED','COMPLETED'].includes(state))&&online&&!busy;
   select.disabled=!canSelect; el('workout-load').disabled=!canSelect;
   for(const [id,allowed] of Object.entries({start:state==='READY'&&workout.can_start!==false,pause:state==='RUNNING',resume:state==='PAUSED'&&workout.can_resume!==false,increase:state==='RUNNING',decrease:state==='RUNNING'})) el(id).disabled=!allowed||busy||!online;
   el('stop').disabled=['IDLE','ABORTED','COMPLETED'].includes(state);

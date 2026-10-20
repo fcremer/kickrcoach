@@ -97,7 +97,8 @@ class WebWorkout:
             if not self.hardware:
                 self.trainer.emit_sample()
                 self.hr.emit_sample()
-            elif self.engine.state == WorkoutState.IDLE and self.trainer.connection == CS.CONNECTED:
+            elif (self.engine.state == WorkoutState.IDLE and self.trainer.connection == CS.CONNECTED
+                  and self.trainer.control_state == TS.READONLY):
                 try:
                     await self.prepare()
                 except (ValueError, RuntimeError) as exc:
@@ -105,7 +106,7 @@ class WebWorkout:
                         self.notice = f"Workout nicht bereit: {exc}"
                     self.ready.set()
             elif self.engine.state == WorkoutState.READY and self.trainer.connection != CS.CONNECTED:
-                await self.engine.stop()
+                await self.record()
                 self.engine = self._engine()
                 self.ready.clear()
             if self.engine.state in (WorkoutState.READY, WorkoutState.WAITING, WorkoutState.RUNNING, WorkoutState.PAUSED):
@@ -138,11 +139,15 @@ class WebWorkout:
         return {'state':engine.state, 'mode':'hardware' if self.hardware else 'simulation',
                 'notice':self.notice, 'recording_error':self.recording_error,
                 'session_id':self.recorder.session_id if self.recorder else None, 'maximum_w':self.safety.maximum_w,
-                'can_start':engine.state == WorkoutState.READY and self.trainer.connection == CS.CONNECTED,
+                'can_select':engine.state in (WorkoutState.IDLE, WorkoutState.READY, WorkoutState.ABORTED, WorkoutState.COMPLETED),
+                'can_start':engine.state == WorkoutState.READY and self.trainer.connection == CS.CONNECTED
+                            and self.trainer.control_state == TS.READONLY,
                 'can_resume':engine.state == WorkoutState.PAUSED and self.trainer.connection == CS.CONNECTED and
                              (not engine.recovery_required or engine.recovery_armed), 'elapsed_sec':engine.elapsed_sec,
                 'remaining_sec':engine.remaining_sec, 'block':current.name, 'next_block':next_block,
-                'planned_target_w':engine.planned_target_w, 'target_w':self.trainer.target_power_w,
+                'planned_target_w':engine.planned_target_w if engine.planned_target_w is not None
+                                   else current.target.resolve(engine.baseline_w),
+                'target_w':self.trainer.target_power_w,
                 'override_w':engine.override_w, 'recovery_armed':engine.recovery_armed,
                 'selected':self.selected, 'catalog_errors':self.catalog_errors,
                 'duration_sec':engine.workout.duration_sec, 'workout_notes':engine.workout.notes,
@@ -165,7 +170,7 @@ class WebWorkout:
             await self.engine.stop()
             self.ready.set()
             return
-        if not self.ready.is_set():
+        if action != 'select' and not self.ready.is_set():
             raise ValueError('Warte auf Trainer und Workout-Vorbereitung.')
         async with self.lock:
             if generation != self.generation:
@@ -174,21 +179,21 @@ class WebWorkout:
             if action == 'select':
                 if selected not in self.workouts:
                     raise ValueError('Unbekanntes Workout.')
-                if engine.state not in (WorkoutState.READY, WorkoutState.ABORTED, WorkoutState.COMPLETED):
+                if engine.state not in (WorkoutState.IDLE, WorkoutState.READY, WorkoutState.ABORTED, WorkoutState.COMPLETED):
                     raise ValueError('Workout zuerst stoppen, bevor du ein anderes auswählst.')
-                if self.hardware:
-                    if self.trainer.connection != CS.CONNECTED or self.trainer.control_state != TS.READONLY:
-                        raise ValueError('Warte auf eine bestätigte neue Trainerverbindung vor der Workout-Auswahl.')
-                    if engine.state != WorkoutState.COMPLETED:
-                        await engine.stop()
-                else:
+                if not self.hardware:
                     await engine.close()
                 if not self.notice or 'STOP wurde nicht bestätigt' not in self.notice:
                     self.notice = None
                 await self.record()
                 self.selected = selected
                 self.engine = self._engine()
-                await self.prepare()
+                self.ready.clear()
+                # Selection is local. Device capability validation happens only
+                # once a confirmed read-only connection is available.
+                if (not self.hardware or (self.trainer.connection == CS.CONNECTED
+                                          and self.trainer.control_state == TS.READONLY)):
+                    await self.prepare()
                 if generation != self.generation:
                     await self.engine.stop()
             elif action == 'start':
