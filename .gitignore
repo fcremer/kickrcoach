@@ -223,3 +223,6 @@ __marimo__/
 config.local.toml
 *.jsonl
 *.local.log
+
+# Local BLE identifiers
+config.toml

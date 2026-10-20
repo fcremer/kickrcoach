@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark"><title>KICKR Coach · Live</title><link rel="stylesheet" href="/static/style.css"><script src="/static/app.js" defer></script></head>
+<body>
+<header><a class="brand" href="/">KICKR<span>COACH</span></a><span class="local">LOKAL · PRIVAT</span></header>
+<main>
+<section class="heading"><div><p class="eyebrow">DEIN RIDE. IM BLICK.</p><h1>Live Cockpit<span class="dot">.</span></h1><p class="intro">Leistung, Rhythmus und Puls. Alles an einem Ort.</p></div><div class="session"><span>BEOBACHTUNGSZEIT</span><strong id="elapsed">00:00</strong></div></section>
+<div class="toolbar"><span id="mode" class="badge">Verbinde …</span><span id="stream" role="status" aria-live="polite">Warte auf Daten</span><span class="readonly">Nur Anzeige · keine Widerstandssteuerung</span></div>
+<p id="error" class="error" role="alert" hidden></p>
+<section class="metrics" aria-label="Aktuelle Messwerte">
+<article class="metric power"><div class="metric-top"><h2>Leistung</h2><span>KICKR / FTMS</span></div><div class="reading"><strong id="power">—</strong><span>W</span></div><div class="metric-bottom"><span id="trainer-fresh">Keine Daten</span><span id="trainer-age">—</span></div></article>
+<article class="metric"><div class="metric-top"><h2>Trittfrequenz</h2><span>CADENCE</span></div><div class="reading"><strong id="cadence">—</strong><span>rpm</span></div><div class="metric-bottom"><span>Dein aktueller Rhythmus</span></div></article>
+<article class="metric"><div class="metric-top"><h2>Herzfrequenz</h2><span class="heart">♡</span></div><div class="reading"><strong id="hr">—</strong><span>bpm</span></div><div class="metric-bottom"><span id="hr-fresh">Keine Daten</span><span id="hr-age">—</span></div></article>
+</section>
+<section class="panel"><div class="panel-heading"><div><p class="eyebrow">LIVE-VERLAUF</p><h2>Die letzten 3 Minuten</h2></div><span class="subtle">Jeweils eigene Skala</span></div><div class="charts">
+<div class="chart-row"><div class="chart-label"><span class="key lime"></span>Leistung <span id="power-scale">W</span></div><svg id="power-chart" viewBox="0 0 900 90" role="img" aria-label="Leistungsverlauf der letzten drei Minuten"><path/></svg></div>
+<div class="chart-row"><div class="chart-label"><span class="key blue"></span>Kadenz <span id="cadence-scale">rpm</span></div><svg id="cadence-chart" viewBox="0 0 900 90" role="img" aria-label="Kadenzverlauf der letzten drei Minuten"><path/></svg></div>
+<div class="chart-row"><div class="chart-label"><span class="key coral"></span>Puls <span id="hr-scale">bpm</span></div><svg id="hr-chart" viewBox="0 0 900 90" role="img" aria-label="Pulsverlauf der letzten drei Minuten"><path/></svg></div></div><div class="axis"><span>−3 min</span><span>−2 min</span><span>−1 min</span><span>Jetzt</span></div><p id="chart-empty" class="subtle">Der Verlauf füllt sich, sobald Messwerte eintreffen. Lücken bleiben sichtbar.</p></section>
+<section class="connections" aria-label="Geräteverbindungen"><div><span class="connection-icon">↗</span><div><h2>Trainer</h2><p>Standard Bluetooth FTMS</p></div><span id="trainer-state" class="state">Wartet</span></div><div><span class="connection-icon">♡</span><div><h2>Pulssensor</h2><p>HeartCast / Bluetooth HRS</p></div><span id="hr-state" class="state">Wartet</span></div></section>
+<footer><span>KICKR COACH <span class="version">/ TELEMETRY PREVIEW</span></span><span>Verlauf nur im Arbeitsspeicher · Beenden mit Ctrl+C im Terminal</span></footer>
+</main></body></html>
