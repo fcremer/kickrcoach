@@ -21,6 +21,7 @@ class Config:
     test_sec: float = 10
     target_w: int = 50
     maximum_w: int = 100
+    training_maximum_w: int = 300
     hr_zone_boundaries: tuple[int, ...] | list[int] = ()
     trainer_id: str = ""
     hr_id: str = ""
@@ -47,6 +48,8 @@ class Config:
         if (type(self.target_w) is not int or type(self.maximum_w) is not int
                 or not 1 <= self.target_w <= self.maximum_w <= 100):
             raise ValueError("M0 requires 1 <= target_w <= maximum_w <= 100")
+        if type(self.training_maximum_w) is not int or not 1 <= self.training_maximum_w <= 2000:
+            raise ValueError("training_maximum_w must be an integer within 1..2000 W")
         if not isinstance(self.trainer_id, str) or not isinstance(self.hr_id, str):
             raise ValueError("device identifiers must be strings")
 

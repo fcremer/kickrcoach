@@ -19,6 +19,7 @@ class WorkoutState(StrEnum):
     IDLE = "IDLE"
     PREPARING = "PREPARING"
     READY = "READY"
+    WAITING = "WAITING"
     RUNNING = "RUNNING"
     PAUSED = "PAUSED"
     COMPLETED = "COMPLETED"
@@ -152,7 +153,7 @@ class WorkoutEngine:
             self.hr.events.task_done()
 
     async def _target(self, watts: int, reason: str) -> None:
-        self._require(WorkoutState.READY, WorkoutState.RUNNING, WorkoutState.PAUSED)
+        self._require(WorkoutState.READY, WorkoutState.WAITING, WorkoutState.RUNNING, WorkoutState.PAUSED)
         caps = await self.trainer.capabilities()
         self.safety.validate(watts, caps.power_range)
         await self.trainer.set_target_power(watts)
@@ -187,17 +188,29 @@ class WorkoutEngine:
         if not self.guard.can_resume(self.sample, self.workout.blocks[self.block_index], self.clock.monotonic()):
             raise WorkoutStateError("fresh trainer power and safe positive cadence required")
 
-    async def start(self) -> None:
+    async def _begin(self) -> None:
+        self._require(WorkoutState.READY, WorkoutState.WAITING)
+        self._require_live_cadence()
+        await self.trainer.request_control()
+        await self._target(self.targets[0], "start")
+        await self.trainer.resume()
+        self.guard.reset()
+        self._since = self.clock.monotonic()
+        self.state = WorkoutState.RUNNING
+        self._event("started")
+
+    async def start(self, *, wait_for_pedaling: bool = False) -> None:
         async with self._operation():
             self._require(WorkoutState.READY)
-            self._require_live_cadence()
-            await self.trainer.request_control()
-            await self._target(self.targets[0], "start")
-            await self.trainer.resume()
-            self.guard.reset()
-            self._since = self.clock.monotonic()
-            self.state = WorkoutState.RUNNING
-            self._event("started")
+            if wait_for_pedaling:
+                self._drain()
+                if (self.trainer.connection != CS.CONNECTED or
+                        not self.guard.can_resume(self.sample, self.workout.blocks[0], self.clock.monotonic())):
+                    self.guard.reset()
+                    self.state = WorkoutState.WAITING
+                    self._event("start_requested:waiting_for_pedaling:no_control_requested")
+                    return
+            await self._begin()
 
     async def _suspend(self, reason: str, *, recover: bool = False) -> None:
         self._freeze()
@@ -321,9 +334,13 @@ class WorkoutEngine:
 
     async def tick(self) -> None:
         async with self._operation():
-            self._require(WorkoutState.READY, WorkoutState.RUNNING, WorkoutState.PAUSED)
+            self._require(WorkoutState.READY, WorkoutState.WAITING, WorkoutState.RUNNING, WorkoutState.PAUSED)
             self._drain()
-            if self.state == WorkoutState.RUNNING:
+            if self.state == WorkoutState.WAITING:
+                if (self.trainer.connection == CS.CONNECTED and
+                        self.guard.can_resume(self.sample,self.workout.blocks[0],self.clock.monotonic())):
+                    await self._begin()
+            elif self.state == WorkoutState.RUNNING:
                 await self._advance()
             elif self.state == WorkoutState.PAUSED:
                 if self.remaining_sec <= 0:
@@ -335,7 +352,7 @@ class WorkoutEngine:
                     await self._recover()
             # Reconnecting HR must never block trainer safety/scheduling ticks.
             now = self.clock.monotonic()
-            if (self.manage_hr_connection and self.state in (WorkoutState.READY, WorkoutState.RUNNING, WorkoutState.PAUSED)
+            if (self.manage_hr_connection and self.state in (WorkoutState.READY, WorkoutState.WAITING, WorkoutState.RUNNING, WorkoutState.PAUSED)
                     and (self.hr.connection != CS.CONNECTED or self.hr.latest.freshness == Freshness.LOST)
                     and now >= self._next_hr_reconnect
                     and (self._hr_reconnect_task is None or self._hr_reconnect_task.done())):

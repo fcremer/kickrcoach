@@ -26,13 +26,13 @@ def demo_workouts() -> dict[str, Workout]:
 class WebWorkout:
     """Owns both event queues. Telemetry broadcast reads this owner's snapshot."""
     def __init__(self, *, trainer: TrainerAdapter | None = None, hr: HeartRateSource | None = None,
-                 hardware: bool = False, maximum_w: int = 100) -> None:
+                 hardware: bool = False, maximum_w: int = 300) -> None:
         self.clock = SystemClock()
         if hardware and (trainer is None or hr is None):
             raise ValueError("hardware sessions require real adapter instances")
         self.hardware = hardware
         self.safety = SafetyController(maximum_w)
-        self.trainer = trainer if trainer is not None else SimulatedTrainer(clock=self.clock)
+        self.trainer = trainer if trainer is not None else SimulatedTrainer(clock=self.clock,safety=self.safety)
         self.hr = hr if hr is not None else SimulatedHeartRateSource(clock=self.clock)
         self.workouts = demo_workouts()
         if hardware:
@@ -86,7 +86,7 @@ class WebWorkout:
                 await self.engine.stop()
                 self.engine = self._engine()
                 self.ready.clear()
-            if self.engine.state in (WorkoutState.READY, WorkoutState.RUNNING, WorkoutState.PAUSED):
+            if self.engine.state in (WorkoutState.READY, WorkoutState.WAITING, WorkoutState.RUNNING, WorkoutState.PAUSED):
                 try:
                     await self._call(self.engine.tick())
                 except (RuntimeError, ValueError, TimeoutError):
@@ -123,7 +123,7 @@ class WebWorkout:
                 self.notice = message
             engine.events.task_done()
         return {'state':engine.state, 'mode':'hardware' if self.hardware else 'simulation',
-                'notice':self.notice,
+                'notice':self.notice, 'maximum_w':self.safety.maximum_w,
                 'can_start':engine.state == WorkoutState.READY and self.trainer.connection == CS.CONNECTED,
                 'can_resume':engine.state == WorkoutState.PAUSED and self.trainer.connection == CS.CONNECTED and
                              (not engine.recovery_required or engine.recovery_armed), 'elapsed_sec':engine.elapsed_sec,
@@ -169,7 +169,7 @@ class WebWorkout:
             elif action == 'start':
                 if self.hardware and (not engine.targets or engine.targets[0] > min(50,self.safety.maximum_w)):
                     raise ValueError('Die Startleistung muss höchstens 50 W betragen.')
-                await self._call(engine.start())
+                await self._call(engine.start(wait_for_pedaling=True))
             elif action == 'pause':
                 await self._call(engine.pause())
             elif action == 'resume':

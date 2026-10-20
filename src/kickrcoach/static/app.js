@@ -7,7 +7,7 @@ let socket;
 let latest = null;
 let busy = false;
 const zoneColors = ['#8bbfde','#d5f77b','#f4d16d','#f6a16c','#ee8296'];
-const workoutStates = {IDLE:'Bereit',PREPARING:'Wird vorbereitet …',READY:'Bereit zum Start',RUNNING:'Workout läuft',PAUSED:'Workout pausiert',COMPLETED:'Workout abgeschlossen',ABORTED:'Workout gestoppt'};
+const workoutStates = {IDLE:'Bereit',PREPARING:'Wird vorbereitet …',READY:'Bereit zum Start',WAITING:'Warte aufs Losfahren',RUNNING:'Workout läuft',PAUSED:'Workout pausiert',COMPLETED:'Workout abgeschlossen',ABORTED:'Workout gestoppt'};
 function time(value) {
   const seconds = Math.max(0,Math.ceil(value));
   return `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
@@ -38,7 +38,7 @@ function renderWorkout(workout, online=true) {
   el('workout-notice').textContent=workout.notice||'';
   el('workout-state').textContent=workoutStates[state]||state;
   el('target').textContent=workout.target_w===null?'—':`${workout.target_w} W`;
-  el('planned').textContent=workout.planned_target_w===null?'Noch kein Ziel bestätigt':`Blockvorgabe: ${workout.planned_target_w} W`;
+  el('planned').textContent=workout.planned_target_w===null?'Noch kein Ziel bestätigt':`Blockvorgabe: ${workout.planned_target_w} W${workout.maximum_w ? ` · Limit: ${workout.maximum_w} W` : ''}`;
   el('block').textContent=workout.block;
   el('next-block').textContent=workout.next_block?`Danach: ${workout.next_block}`:'Danach: Workout-Ende';
   el('remaining').textContent=time(workout.remaining_sec);
@@ -105,7 +105,8 @@ function render(data) {
   if(data.status!=='ready') {clearReadings(data.error?'Verbindung fehlgeschlagen':'Geräte werden gesucht und verbunden …');return;}
   el('stream').textContent='● Live-Verbindung';
   renderZone(data.hr.bpm,data.hr.freshness,data.hr_zone_boundaries||[]);
-  const seconds=Math.floor(data.elapsed_sec);
+  el('clock-label').textContent=data.workout?'TRAININGSZEIT':'BEOBACHTUNGSZEIT';
+  const seconds=Math.floor(data.workout?data.workout.elapsed_sec:data.elapsed_sec);
   el('elapsed').textContent=`${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
   for(const [id,value] of [['power',data.trainer.power_w],['cadence',data.trainer.cadence_rpm],['hr',data.hr.bpm]]) el(id).textContent=value===null?'—':Math.round(value);
   for(const role of ['trainer','hr']) {

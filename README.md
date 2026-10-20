@@ -11,13 +11,21 @@ Im Terminal einmal pro Serverstart die angezeigte Freigabe exakt eingeben
 CLI-Bestätigung aus AGENTS.md. Bis zum Klick auf **Training am KICKR starten**
 bleiben Verbindung und Workout-Vorbereitung lesend.
 
-Unter **http://127.0.0.1:8000** ein Workout auswählen, treten und starten.
+Unter **http://127.0.0.1:8000** ein Workout auswählen und **Training starten**
+drücken. Du kannst danach aufsteigen und losfahren. Ohne frische Pedaldaten zeigt
+die GUI **Warte aufs Losfahren**: keine Zeit läuft und es werden noch keine
+Steuerbefehle gesendet. Erst beim Losfahren beginnt der erste Block. STOP bricht
+auch einen solchen wartenden Start ab.
 Zielleistung, aktueller/nächster Block und Restzeit erscheinen in der GUI.
 Pause, Fortsetzen, ±5 W und STOP steuern den echten Trainer über dieselbe
 M2-Sicherheitslogik wie im Simulator. Das 4-Minuten-Workout beginnt bei 40 W;
-Starts sind auf höchstens 50 W und alle Ziele auf die konfigurierte Grenze
-`maximum_w` (höchstens 100 W) begrenzt. Ein fehlender Pulssensor blockiert
-statisches Training nicht; frische Trainerleistung und sichere Kadenz sind nötig.
+Starts bleiben auf höchstens 50 W begrenzt. Für spätere Ziele gilt
+`training_maximum_w` (Standard: 300 W), zusätzlich zum am Trainer erkannten
+Leistungsbereich und dessen Schrittweite. Dieses Limit ist eine Obergrenze,
+kein automatisch eingestellter Trainingswert. `maximum_w` ist ausschließlich
+die weiterhin höchstens 100 W große Grenze des M0-Diagnosetests. Ein fehlender
+Pulssensor blockiert statisches Training nicht; erst die tatsächliche
+Widerstandssteuerung benötigt frische Trainerleistung und sichere Kadenz.
 
 Nach Trainerverlust pausiert die Zeit. Die App verbindet sich mit niedrigem
 Ziel neu, startet aber erst nach **Fortsetzen**. Ein nicht bestätigter STOP wird
@@ -149,8 +157,9 @@ and construct `trainer.FtmsTrainer(factory)` / `heart_rate.BleHeartRateSource(fa
 The library API does not prompt; the calling application is responsible for
 explicit user authorization before requesting control. The M0 CLI still enforces
 its interactive hardware-control confirmation and remains the acceptance path.
-The conservative 100 W target ceiling remains in place pending hardware evidence
-and the M2 safety policy. HR loss does not change trainer power in M1.
+Standalone adapters retain their conservative default 100 W policy. The GUI
+supplies its separate configured training_maximum_w; the M0 probe keeps its
+independent hard 100 W diagnostic ceiling. HR loss does not change trainer power in M1.
 
 ## M0: install and test
 

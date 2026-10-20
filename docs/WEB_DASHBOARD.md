@@ -210,3 +210,45 @@ confirmation, refusal/cancellation/EOF/noninteractive paths before server startu
 The normal CI remains hardware-free. Real browser visual QA and physical load
 response remain unverified by this agent; the existing hardware record is not
 silently upgraded. Recording, SQLite and full M3 acceptance remain separate.
+
+## Start before mounting and separate training limit — 2026-10-20
+
+The user reported that a requirement to pedal before clicking Start prevented
+the practical sequence Start → mount → ride. Web Start now opts into the engine's
+WAITING state when fresh safe pedaling is absent. In WAITING there is no Request
+Control, target, Start or workout-time progression. Regular ticks continue
+observing telemetry. Once fresh power and safe cadence arrive, the previously
+explicitly requested start runs the acknowledged low-power start sequence and
+begins time at zero. A missing/stale/zero-cadence sample never starts control.
+This wait has no automatic timeout; STOP or server shutdown cancels it. Closing
+and reopening a browser retains the pending start just as it retains a workout.
+Pre-start connection retries remain read-only; controlled disconnect recovery
+after actual RUNNING still enters PAUSED and requires explicit Resume.
+
+The existing immediate engine start API remains available for callers that want
+to require cadence at invocation. The web owner uses start(wait_for_pedaling=True).
+The GUI names WAITING explicitly, disables repeated start/adjustments and leaves
+STOP available. The first block retains its full duration regardless of mounting
+delay. This change does not weaken the cadence-collapse guard after motion starts.
+
+A separate Config.training_maximum_w (default 300, configurable 1..2000 W) now
+sets the GUI's SafetyController and the real or simulated adapter/controller
+policy consistently. There is no hardcoded 100 W restriction in the general
+validator: it enforces the chosen maximum plus discovered FTMS range/increment,
+within the protocol's signed 16-bit target representation. The GUI displays its
+configured training ceiling and CLI authorization prints it before confirmation.
+Low initial targets (<=50 W) and low recovery targets remain unchanged. Measured
+power is observational and is never validated as if it were a requested target.
+
+Config.maximum_w remains M0-only (<=100 W). The probe also applies an explicit
+100 W ceiling at construction of its control writer, even if a library caller
+bypasses Config.validate. Thus increasing the training ceiling cannot raise the
+diagnostic test ceiling. Personal config.toml remains ignored; the template
+includes both named settings and their separate responsibilities.
+
+Regression evidence covers a long stationary wait with zero writes/time, missing
+and stale data, first movement and full block timing, STOP while armed, pre-start
+connection loss, HTTP Start before packets, hardware-path manual 250 W targets,
+configured/range/increment rejection, a 600 W measured packet independent of the
+target ceiling, and refusal of over-100 W targets in a directly constructed M0
+probe. These are hardware-free software checks; they are not physical load tests.
