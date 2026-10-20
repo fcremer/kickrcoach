@@ -43,9 +43,9 @@ function dashboard() {
   const context=vm.createContext({validBoundaries,zoneFor,zoneRange,
     document:{getElementById:get,createElement:()=>new Element(),querySelector:()=>get('readonly'),querySelectorAll:()=>[]},
     location:{protocol:'http:',host:'localhost:8000'},performance:{now:()=>100},
-    WebSocket:class {},setInterval:()=>{},setTimeout:()=>{},console});
+    WebSocket:class {},setInterval:()=>{},setTimeout:()=>{},console,fetch:async()=>{throw new Error('Failed to fetch');}});
   const source=readFileSync(new URL('../src/kickrcoach/static/app.js',import.meta.url),'utf8').replace(/^import[^\n]+\n/,'');
-  vm.runInContext(source+'\nglobalThis.testing={render,clearReadings};',context);
+  vm.runInContext(source+'\nglobalThis.testing={render,clearReadings,command};',context);
   return {get,...context.testing};
 }
 function payload() {
@@ -85,4 +85,29 @@ test('unconfigured zones are explicit and never use default thresholds',()=>{
   const ui=dashboard(),data=payload();data.hr_zone_boundaries=[];ui.render(data);
   assert.equal(ui.get('hr-zone').textContent,'Zonen fehlen');
   assert.equal(ui.get('hr').textContent,125);
+});
+
+test('real control is explicitly labelled and recovery disables resume until armed',()=>{
+  const ui=dashboard(),data=payload();
+  data.simulated=false;data.workout.mode='hardware';data.workout.can_start=false;
+  ui.render(data);
+  assert.equal(ui.get('start').textContent,'Training am KICKR starten');
+  assert.equal(ui.get('start').disabled,true);
+  assert.match(ui.get('workout-control-mode').textContent,/ECHTE TRAINERSTEUERUNG/);
+  data.workout.state='PAUSED';data.workout.can_resume=false;
+  data.workout.notice='STOP wurde nicht bestätigt.';ui.render(data);
+  assert.equal(ui.get('resume').disabled,true);
+  assert.equal(ui.get('workout-notice').hidden,false);
+  assert.match(ui.get('workout-notice').textContent,/nicht bestätigt/);
+  data.workout.can_resume=true;ui.render(data);
+  assert.equal(ui.get('resume').disabled,false);
+});
+
+test('undeliverable STOP gives explicit physical stop guidance',async()=>{
+  const ui=dashboard(),data=payload();data.workout.state='RUNNING';data.workout.mode='hardware';
+  ui.render(data);
+  await ui.command('stop');
+  assert.equal(ui.get('workout-error').hidden,false);
+  assert.match(ui.get('workout-error').textContent,/STOP konnte nicht bestätigt werden/);
+  assert.match(ui.get('workout-error').textContent,/Treten beenden/);
 });

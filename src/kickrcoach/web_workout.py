@@ -1,12 +1,16 @@
-"""Single simulator session owner for the local workout preview; no hardware path."""
+"""Single workout owner for simulation or explicitly enabled hardware control."""
 import asyncio
+import logging
 from collections.abc import Coroutine
 
-from .domain import SystemClock, TrainerSample
+from .domain import SystemClock, TrainerSample, TrainerAdapter, HeartRateSource, ConnectionState as CS, ControlState as TS, StateEvent
 from .engine import WorkoutEngine, WorkoutState, WorkoutStateError
 from .simulation import SimulatedTrainer, SimulatedHeartRateSource
 from .workout import Workout
+from .safety import SafetyController
 
+
+log = logging.getLogger(__name__)
 
 def demo_workouts() -> dict[str, Workout]:
     def make(name: str, blocks: list[tuple[str, int, int]]) -> Workout:
@@ -21,11 +25,20 @@ def demo_workouts() -> dict[str, Workout]:
 
 class WebWorkout:
     """Owns both event queues. Telemetry broadcast reads this owner's snapshot."""
-    def __init__(self) -> None:
+    def __init__(self, *, trainer: TrainerAdapter | None = None, hr: HeartRateSource | None = None,
+                 hardware: bool = False, maximum_w: int = 100) -> None:
         self.clock = SystemClock()
-        self.trainer = SimulatedTrainer(clock=self.clock)
-        self.hr = SimulatedHeartRateSource(clock=self.clock)
+        if hardware and (trainer is None or hr is None):
+            raise ValueError("hardware sessions require real adapter instances")
+        self.hardware = hardware
+        self.safety = SafetyController(maximum_w)
+        self.trainer = trainer if trainer is not None else SimulatedTrainer(clock=self.clock)
+        self.hr = hr if hr is not None else SimulatedHeartRateSource(clock=self.clock)
         self.workouts = demo_workouts()
+        if hardware:
+            self.workouts = {key: value.model_copy(update={'name':value.name.replace('Demo · ', '')})
+                             for key,value in self.workouts.items()}
+        self.notice: str | None = None
         self.selected = 'baseline'
         self.engine = self._engine()
         self.lock = asyncio.Lock()
@@ -34,7 +47,8 @@ class WebWorkout:
         self.generation = 0
 
     def _engine(self) -> WorkoutEngine:
-        return WorkoutEngine(self.trainer, self.hr, self.workouts[self.selected], clock=self.clock)
+        return WorkoutEngine(self.trainer, self.hr, self.workouts[self.selected], clock=self.clock,
+                             safety=self.safety, manage_hr_connection=not self.hardware)
 
     async def _call(self, operation: Coroutine[object, object, None]) -> None:
         # The engine may cancel an active operation on STOP. Isolate that task
@@ -49,28 +63,45 @@ class WebWorkout:
             raise WorkoutStateError("Befehl durch STOP verworfen.") from None
 
     async def prepare(self) -> None:
-        await self._call(self.engine.prepare())
-        self.trainer.emit_sample()
-        self.hr.emit_sample()
+        await self._call(self.engine.prepare(connect=not self.hardware))
+        if not self.hardware:
+            self.trainer.emit_sample()
+            self.hr.emit_sample()
         await self._call(self.engine.tick())
         self.ready.set()
 
     async def step(self) -> None:
         async with self.lock:
-            self.trainer.emit_sample()
-            self.hr.emit_sample()
+            if not self.hardware:
+                self.trainer.emit_sample()
+                self.hr.emit_sample()
+            elif self.engine.state == WorkoutState.IDLE and self.trainer.connection == CS.CONNECTED:
+                try:
+                    await self.prepare()
+                except (ValueError, RuntimeError) as exc:
+                    if not self.notice or 'STOP wurde nicht bestätigt' not in self.notice:
+                        self.notice = f"Workout nicht bereit: {exc}"
+                    self.ready.set()
+            elif self.engine.state == WorkoutState.READY and self.trainer.connection != CS.CONNECTED:
+                await self.engine.stop()
+                self.engine = self._engine()
+                self.ready.clear()
             if self.engine.state in (WorkoutState.READY, WorkoutState.RUNNING, WorkoutState.PAUSED):
                 try:
                     await self._call(self.engine.tick())
-                except WorkoutStateError:
-                    if self.engine.state != WorkoutState.ABORTED:
+                except (RuntimeError, ValueError, TimeoutError):
+                    if self.engine.state not in (WorkoutState.ABORTED, WorkoutState.PAUSED):
                         raise
+                    if not self.notice or 'STOP wurde nicht bestätigt' not in self.notice:
+                        self.notice = 'Workout angehalten. Verbindung prüfen; anschließend ausdrücklich fortsetzen.'
                 self.sample = self.engine.sample
             else:
                 while not self.trainer.events.empty():
                     event = self.trainer.events.get_nowait()
                     if isinstance(event, TrainerSample):
                         self.sample = event
+                    elif isinstance(event, StateEvent) and event.connection != CS.CONNECTED:
+                        self.sample = None
                     self.trainer.events.task_done()
                 self.hr.refresh()
                 while not self.hr.events.empty():
@@ -84,9 +115,18 @@ class WebWorkout:
                       if engine.block_index+1 < len(engine.workout.blocks) else None)
         # Drain diagnostics here; no persistence is claimed for this UI preview.
         while not engine.events.empty():
-            engine.events.get_nowait()
+            event = engine.events.get_nowait()
+            if 'stop_unconfirmed' in event.reason or 'physical_stop' in event.reason:
+                message = 'STOP wurde nicht bestätigt. Treten beenden und Trainer entlasten.'
+                if self.notice != message:
+                    log.error(message)
+                self.notice = message
             engine.events.task_done()
-        return {'state':engine.state, 'elapsed_sec':engine.elapsed_sec,
+        return {'state':engine.state, 'mode':'hardware' if self.hardware else 'simulation',
+                'notice':self.notice,
+                'can_start':engine.state == WorkoutState.READY and self.trainer.connection == CS.CONNECTED,
+                'can_resume':engine.state == WorkoutState.PAUSED and self.trainer.connection == CS.CONNECTED and
+                             (not engine.recovery_required or engine.recovery_armed), 'elapsed_sec':engine.elapsed_sec,
                 'remaining_sec':engine.remaining_sec, 'block':current.name, 'next_block':next_block,
                 'planned_target_w':engine.planned_target_w, 'target_w':self.trainer.target_power_w,
                 'override_w':engine.override_w, 'recovery_armed':engine.recovery_armed,
@@ -94,14 +134,15 @@ class WebWorkout:
                 'choices':[{'id':key,'name':value.name} for key,value in self.workouts.items()]}
 
     async def command(self, action: str, selected: str | None = None) -> None:
-        if not self.ready.is_set():
-            raise ValueError('Simulator wird vorbereitet; bitte kurz warten.')
         generation = self.generation
         if action == 'stop':
             self.generation += 1
             # STOP bypasses the session lock and lets the engine preempt active work.
             await self.engine.stop()
+            self.ready.set()
             return
+        if not self.ready.is_set():
+            raise ValueError('Warte auf Trainer und Workout-Vorbereitung.')
         async with self.lock:
             if generation != self.generation:
                 raise ValueError("Befehl durch STOP verworfen.")
@@ -111,13 +152,23 @@ class WebWorkout:
                     raise ValueError('Unbekanntes Workout.')
                 if engine.state not in (WorkoutState.READY, WorkoutState.ABORTED, WorkoutState.COMPLETED):
                     raise ValueError('Workout zuerst stoppen, bevor du ein anderes auswählst.')
-                await engine.close()
+                if self.hardware:
+                    if self.trainer.connection != CS.CONNECTED or self.trainer.control_state != TS.READONLY:
+                        raise ValueError('Warte auf eine bestätigte neue Trainerverbindung vor der Workout-Auswahl.')
+                    if engine.state != WorkoutState.COMPLETED:
+                        await engine.stop()
+                else:
+                    await engine.close()
+                if not self.notice or 'STOP wurde nicht bestätigt' not in self.notice:
+                    self.notice = None
                 self.selected = selected
                 self.engine = self._engine()
                 await self.prepare()
                 if generation != self.generation:
                     await self.engine.stop()
             elif action == 'start':
+                if self.hardware and (not engine.targets or engine.targets[0] > min(50,self.safety.maximum_w)):
+                    raise ValueError('Die Startleistung muss höchstens 50 W betragen.')
                 await self._call(engine.start())
             elif action == 'pause':
                 await self._call(engine.pause())
@@ -130,3 +181,4 @@ class WebWorkout:
 
     async def close(self) -> None:
         await self.engine.close()
+        self.snapshot()  # Surface/log an unconfirmed final Stop during shutdown too.

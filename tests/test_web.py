@@ -240,3 +240,50 @@ def test_stop_during_block_transition_does_not_cancel_telemetry_owner():
         finally:
             await session.close()
     asyncio.run(run())
+
+
+def test_hardware_gui_api_uses_real_adapter_path_only_when_explicitly_enabled(monkeypatch):
+    from types import SimpleNamespace
+    import struct
+    from kickrcoach import ble
+    from kickrcoach.cli import Config
+    from kickrcoach.hardware_telemetry import HardwareTelemetry
+    from kickrcoach.protocol import FTMS,BIKE
+    from kickrcoach.simulation import MemoryTransport,Faults
+    transports=[]
+    async def discover(_timeout):
+        return {'trainer':(SimpleNamespace(address='trainer-fixture'),SimpleNamespace(service_uuids=[FTMS]))}
+    def factory(_device):
+        def make(callback):
+            transport=MemoryTransport('trainer',callback,Faults());transports.append(transport)
+            return transport
+        return make
+    monkeypatch.setattr(ble,'discover',discover)
+    monkeypatch.setattr(ble,'transport_factory',factory)
+    config=Config(hardware=True,trainer_id='trainer-fixture',hr_id='hr-fixture')
+    service=HardwareTelemetry(config,retry_sec=.01,control_enabled=True)
+    headers={'origin':'http://testserver'}
+    with TestClient(create_app(config,telemetry=service,enable_control=True)) as client:
+        with client.websocket_connect('/ws/telemetry',headers=headers) as ws:
+            ws.receive_json()
+            payload=ws.receive_json()
+            assert payload['simulated'] is False and payload['workout']['mode']=='hardware'
+            assert payload['workout']['state']=='READY'
+            assert transports[-1].writes==[]
+            # Deliver a fixed BLE packet, not fake simulator telemetry from the web owner.
+            async def notify():
+                transports[-1].notify(BIKE,struct.pack('<HHHh',0x44,2000,160,42))
+            client.portal.call(notify)
+            def command(action):
+                response=client.post('/api/workout',headers=headers,json={'action':action})
+                assert response.status_code==200,response.text
+                return response.json()
+            assert command('start')['target_w']==40
+            assert command('increase')['target_w']==45
+            assert command('pause')['state']=='PAUSED'
+            assert command('resume')['state']=='RUNNING'
+            with client.websocket_connect('/ws/telemetry',headers=headers) as second:
+                assert second.receive_json()['workout']['target_w']==45
+            assert command('stop')['state']=='ABORTED'
+    assert all(not transport.is_connected for transport in transports)
+    assert transports[0].writes[:3]==[b'\x00',b'\x05\x28\x00',b'\x07']

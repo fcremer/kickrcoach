@@ -141,3 +141,11 @@ No simulator result substitutes for that evidence.
 
 References: https://docs.pydantic.dev/latest/concepts/models/ and
 https://pyyaml.org/wiki/PyYAMLDocumentation
+
+## Subsequent GUI integration
+
+The local web app now reuses this engine for explicitly enabled hardware ERG
+control. Official startup requires an interactive CLI confirmation, and GUI Start
+remains separate from discovery/preparation. See the current hardware-control
+section of WEB_DASHBOARD.md for connection ownership, authorization and tests.
+This software integration does not add physical acceptance evidence to M0.
