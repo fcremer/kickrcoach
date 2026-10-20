@@ -196,3 +196,20 @@ test('local workout preview and current instructions are visible without changin
   assert.equal(ui.get('block-notes').hidden,true);
   assert.equal(ui.get('catalog-errors').hidden,true);
 });
+
+test('disconnected KICKR permits selection and preview but never start',()=>{
+  const ui=dashboard(),data=payload();
+  data.workout.state='IDLE';data.workout.mode='hardware';
+  data.workout.can_select=true;data.workout.can_start=false;
+  data.trainer.connection='DISCONNECTED';
+  ui.render(data);
+  assert.equal(ui.get('workout-select').disabled,false);
+  assert.equal(ui.get('workout-load').disabled,false);
+  assert.equal(ui.get('start').disabled,true);
+  assert.equal(ui.get('workout-state').textContent,'Warte auf KICKR');
+  data.workout.state='WAITING';data.workout.can_select=false;
+  ui.render(data);
+  assert.equal(ui.get('workout-select').disabled,true);
+  ui.clearReadings('Server nicht erreichbar');
+  assert.equal(ui.get('workout-select').disabled,true);
+});

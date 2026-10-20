@@ -11,8 +11,9 @@ Der Server startet direkt, ohne Texteingabe oder TTY-Anforderung.
 **Training am KICKR starten** bleiben Verbindung und Workout-Vorbereitung lesend.
 Der separate M0-Diagnosetest behält seine interaktive Bestätigung.
 
-Unter **http://127.0.0.1:8000** ein Workout auswählen und **Training starten**
-drücken. Du kannst danach aufsteigen und losfahren. Ohne frische Pedaldaten zeigt
+Unter **http://127.0.0.1:8000** kannst du bereits ohne KICKR-Verbindung ein
+Workout auswählen und den Ablauf ansehen. Die Auswahl bleibt beim Verbinden
+erhalten. Nach erfolgreicher Trainerprüfung **Training starten** drücken. Du kannst danach aufsteigen und losfahren. Ohne frische Pedaldaten zeigt
 die GUI **Warte aufs Losfahren**: keine Zeit läuft und es werden noch keine
 Steuerbefehle gesendet. Erst beim Losfahren beginnt der erste Block. STOP bricht
 auch einen solchen wartenden Start ab.

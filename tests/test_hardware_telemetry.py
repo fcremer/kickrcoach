@@ -358,3 +358,66 @@ def test_gui_start_before_mounting_waits_then_begins_and_accepts_targets_over_10
             assert service.workout.engine.state=='RUNNING' and service.trainer.target_power_w==250
             await service.workout.command('stop')
     asyncio.run(run())
+
+
+def test_workout_selection_precedes_independent_device_connections(monkeypatch):
+    async def run():
+        available=set()
+        async with environment(monkeypatch,available,control_enabled=True) as (service,transports,scans):
+            session=service.workout
+            await session.command('select','easy')
+            before=session.snapshot()
+            assert before['state']=='IDLE'
+            assert before['selected']=='easy'
+            assert before['can_select'] is True
+            assert before['can_start'] is False
+            assert before['preview'][0]['target_w']==50
+            assert before['planned_target_w']==50
+            assert not session.ready.is_set()
+            assert transports=={'trainer':[],'hr':[]}
+            with pytest.raises(ValueError,match='Warte auf Trainer'):
+                await session.command('start')
+            available.add('hr')
+            await until(lambda:service.hr.connection==CS.CONNECTED)
+            assert session.snapshot()['selected']=='easy'
+            assert not session.snapshot()['can_start']
+            peer=transports['hr'][-1]
+            available.add('trainer')
+            await until(lambda:session.ready.is_set())
+            assert session.snapshot()['selected']=='easy'
+            assert session.snapshot()['state']=='READY'
+            assert session.snapshot()['can_start']
+            assert transports['trainer'][-1].writes==[]
+            assert peer is transports['hr'][-1]
+            await session.command('start')
+            assert session.engine.state=='WAITING'
+            assert not session.snapshot()['can_select']
+            with pytest.raises(ValueError,match='zuerst stoppen'):
+                await session.command('select','baseline')
+            emit(transports,'trainer')
+            await until(lambda:session.engine.state=='RUNNING')
+            assert service.trainer.target_power_w==50
+            await session.command('stop')
+    asyncio.run(run())
+
+
+def test_idle_disconnect_keeps_selection_and_allows_offline_change(monkeypatch):
+    async def run():
+        available={'trainer'}
+        async with environment(monkeypatch,available,control_enabled=True) as (service,transports,scans):
+            session=service.workout
+            await until(lambda:session.ready.is_set())
+            await session.command('select','easy')
+            available.remove('trainer')
+            transports['trainer'][-1].lose_connection()
+            await until(lambda:session.engine.state=='IDLE')
+            assert session.selected=='easy'
+            await session.command('select','baseline')
+            assert session.snapshot()['selected']=='baseline'
+            assert not session.snapshot()['can_start']
+            assert all(transport.writes==[] for transport in transports['trainer'])
+            available.add('trainer')
+            await until(lambda:session.ready.is_set())
+            assert session.engine.workout.name=='4 Minuten'
+            assert all(transport.writes==[] for transport in transports['trainer'])
+    asyncio.run(run())
